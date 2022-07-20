@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Monodepth2
+=======
+# Monodepth2-Reproducing Project
+>>>>>>> 4db27cb1ea5d4c10ea72e1e80d57685d60f98c44
 
 This is the reference PyTorch implementation for training and testing depth estimation models using the method described in
 
