@@ -30,7 +30,8 @@ class Trainer:
     def __init__(self, options):
         self.opt = options
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
-
+        # torch cudnn disabled
+        torch.backends.cudnn.enabled = False
         # checking height and width are multiples of 32
         assert self.opt.height % 32 == 0, "'height' must be a multiple of 32"
         assert self.opt.width % 32 == 0, "'width' must be a multiple of 32"
@@ -51,13 +52,26 @@ class Trainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
 
-        self.models["encoder"] = networks.ResnetEncoder(
-            self.opt.num_layers, self.opt.weights_init == "pretrained")
+        # Network - DepthResNet(Monodepth2)
+        # self.models["encoder"] = networks.ResnetEncoder(
+        #     self.opt.num_layers, self.opt.weights_init == "pretrained")
+        # self.models["encoder"].to(self.device)
+        # self.parameters_to_train += list(self.models["encoder"].parameters())
+        #
+        # self.models["depth"] = networks.DepthDecoder(
+        #     self.models["encoder"].num_ch_enc, self.opt.scales)
+        # self.models["depth"].to(self.device)
+        # self.parameters_to_train += list(self.models["depth"].parameters())
+
+        
+        # Network - HRLiteNet
+        # Encoder
+        self.models["encoder"] = networks.MobileEncoder(True)
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters())
-
-        self.models["depth"] = networks.DepthDecoder(
-            self.models["encoder"].num_ch_enc, self.opt.scales)
+        # Decoder
+        self.models["depth"] = networks.HRDepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
         self.models["depth"].to(self.device)
         self.parameters_to_train += list(self.models["depth"].parameters())
 
@@ -99,10 +113,13 @@ class Trainer:
             self.models["predictive_mask"].to(self.device)
             self.parameters_to_train += list(self.models["predictive_mask"].parameters())
 
+        
         self.model_optimizer = optim.Adam(self.parameters_to_train, self.opt.learning_rate)
-        self.model_lr_scheduler = optim.lr_scheduler.StepLR(
-            self.model_optimizer, self.opt.scheduler_step_size, 0.1)
-
+        if self.opt.lr_scheduler == "StepLR":
+            self.model_lr_scheduler = optim.lr_scheduler.StepLR(self.model_optimizer, self.opt.scheduler_step_size, 0.1)
+        elif self.opt.lr_scheduler == "CosAnnLR":
+            self.model_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(self.model_optimizer, T_max=50, eta_min=1e-6, last_epoch=-1)
+        
         if self.opt.load_weights_folder is not None:
             self.load_model()
 
@@ -384,7 +401,7 @@ class Trainer:
                 outputs[("color", frame_id, scale)] = F.grid_sample(
                     inputs[("color", frame_id, source_scale)],
                     outputs[("sample", frame_id, scale)],
-                    padding_mode="border")
+                    padding_mode="border", align_corners=True)
 
                 if not self.opt.disable_automasking:
                     outputs[("color_identity", frame_id, scale)] = \

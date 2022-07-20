@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import argparse
+from select import select
 
 file_dir = os.path.dirname(__file__)  # the directory that options.py resides in
 
@@ -95,11 +96,16 @@ class MonodepthOptions:
         self.parser.add_argument("--num_epochs",
                                  type=int,
                                  help="number of epochs",
-                                 default=20)
+                                 default=30)
         self.parser.add_argument("--scheduler_step_size",
                                  type=int,
                                  help="step size of the scheduler",
-                                 default=15)
+                                 default=12)
+        self.parser.add_argument("--lr_scheduler",
+                                 type=str,
+                                 help="Choose lr_sheduler",
+                                 default="StepLR",
+                                 choices=["StepLR", "CosAnnLR"])
 
         # ABLATION options
         self.parser.add_argument("--v1_multiscale",
@@ -130,7 +136,7 @@ class MonodepthOptions:
         self.parser.add_argument("--pose_model_type",
                                  type=str,
                                  help="normal or shared",
-                                 default="separate_resnet",
+                                 default="shared",
                                  choices=["posecnn", "separate_resnet", "shared"])
 
         # SYSTEM options
@@ -160,7 +166,7 @@ class MonodepthOptions:
         self.parser.add_argument("--save_frequency",
                                  type=int,
                                  help="number of epochs between each save",
-                                 default=1)
+                                 default=10)
 
         # EVALUATION options
         self.parser.add_argument("--eval_stereo",
