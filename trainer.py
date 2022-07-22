@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import time
-
+import warnings
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -24,7 +24,7 @@ from layers import *
 import datasets
 import networks
 from IPython import embed
-
+warnings.filterwarnings("ignore")
 
 class Trainer:
     def __init__(self, options):
@@ -52,28 +52,43 @@ class Trainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
 
-        # Network - DepthResNet(Monodepth2)
-        # self.models["encoder"] = networks.ResnetEncoder(
-        #     self.opt.num_layers, self.opt.weights_init == "pretrained")
-        # self.models["encoder"].to(self.device)
-        # self.parameters_to_train += list(self.models["encoder"].parameters())
-        #
-        # self.models["depth"] = networks.DepthDecoder(
-        #     self.models["encoder"].num_ch_enc, self.opt.scales)
-        # self.models["depth"].to(self.device)
-        # self.parameters_to_train += list(self.models["depth"].parameters())
-
+        if self.opt.depth_network == "DepthResNet":
+            # Network - DepthResNet(Monodepth2)
+            # Encoder
+            self.models["encoder"] = networks.ResnetEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained")
+            self.models["encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["encoder"].parameters())
+            # Decoder
+            self.models["depth"] = networks.DepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.depth_network == "HRLiteNet":
+            # Network - HRLiteNet
+            # Encoder
+            self.models["encoder"] = networks.MobileEncoder(True)
+            self.models["encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["encoder"].parameters())
+            # Decoder
+            self.models["depth"] = networks.HRDepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.depth_network == "DepthRexNet":
+            # Network - DepthRexNet
+            # Encoder
+            self.models["encoder"] = networks.RexnetEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained")
+            self.models["encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["encoder"].parameters())
+            # Decoder
+            self.models["depth"] = networks.DepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
         
-        # Network - HRLiteNet
-        # Encoder
-        self.models["encoder"] = networks.MobileEncoder(True)
-        self.models["encoder"].to(self.device)
-        self.parameters_to_train += list(self.models["encoder"].parameters())
-        # Decoder
-        self.models["depth"] = networks.HRDepthDecoder(
-            self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
-        self.models["depth"].to(self.device)
-        self.parameters_to_train += list(self.models["depth"].parameters())
+
 
         if self.use_pose_net:
             if self.opt.pose_model_type == "separate_resnet":

@@ -16,7 +16,12 @@ file_dir = os.path.dirname(__file__)  # the directory that options.py resides in
 class MonodepthOptions:
     def __init__(self):
         self.parser = argparse.ArgumentParser(description="Monodepthv2 options")
-
+        # Deep Network
+        self.parser.add_argument("--depth_network",
+                                 type=str,
+                                 help="choose the deep network",
+                                 default="DepthResNet",
+                                 choices=["DepthResNet", "HRLiteNet", "DepthRexNet"])
         # PATHS
         self.parser.add_argument("--data_path",
                                  type=str,
@@ -26,7 +31,6 @@ class MonodepthOptions:
                                  type=str,
                                  help="log directory",
                                  default=os.path.join(os.path.expanduser("~"), "tmp"))
-
         # TRAINING options
         self.parser.add_argument("--model_name",
                                  type=str,
