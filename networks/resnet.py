@@ -214,7 +214,7 @@ class ResNet(nn.Module):
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.spatial_avgpool = nn.AvgPool2d(kernel_size=2, stride=1, padding=1)
+        self.spatial_avgpool = nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
         self.conv1_rex = nn.Conv2d(3,
                                self.inplanes // 2,
                                kernel_size=2,

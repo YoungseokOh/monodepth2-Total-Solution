@@ -86,12 +86,15 @@ def evaluate(opt):
         dataloader = DataLoader(dataset, 16, shuffle=False, num_workers=opt.num_workers,
                                 pin_memory=True, drop_last=False)
 
-
-        # encoder = networks.ResnetEncoder(opt.num_layers, False)
-        # depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
-
-        encoder = networks.MobileEncoder(True)
-        depth_decoder = networks.HRDepthDecoder(encoder.num_ch_enc, opt.scales, mobile_encoder=True)
+        if opt.depth_network == "DepthResNet":
+            encoder = networks.ResnetEncoder(opt.num_layers, True)
+            depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+        elif opt.depth_network == "HRLiteNet":
+            encoder = networks.MobileEncoder(True)
+            depth_decoder = networks.HRDepthDecoder(encoder.num_ch_enc, opt.scales, mobile_encoder=True)
+        elif opt.depth_network == "DepthRexNet":
+            encoder = networks.RexnetEncoder(opt.num_layers, False)
+            depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
         model_dict = encoder.state_dict()
         encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
         depth_decoder.load_state_dict(torch.load(decoder_path))

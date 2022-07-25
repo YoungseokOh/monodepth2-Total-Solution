@@ -93,12 +93,16 @@ class RexnetEncoder(nn.Module):
     def forward(self, input_image):
         self.features = []
         x = (input_image - 0.45) / 0.225
+        # Origin
+        # x = self.encoder.conv1(x)
+        # x = self.encoder.bn1(x)
+        # revise
         x = self.encoder.conv1_rex(x)
         x = self.encoder.conv2_rex(x)
-        # x = self.encoder.bn1(x)
+        x = nn.functional.interpolate(x, scale_factor=2, mode="nearest")
         self.features.append(self.encoder.relu(x))
-        self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
-        self.features.append(self.encoder.layer2(self.features[-1]))
-        self.features.append(self.encoder.layer3(self.features[-1]))
-        self.features.append(self.encoder.layer4(self.features[-1]))
+        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer1(self.encoder.maxpool(self.features[-1]))))
+        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer2(self.features[-1])))
+        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer3(self.features[-1])))
+        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer4(self.features[-1])))
         return self.features
