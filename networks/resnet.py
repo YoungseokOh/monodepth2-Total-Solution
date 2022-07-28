@@ -329,7 +329,11 @@ def _resnet(arch: str, block: Type[Union[BasicBlock,
         from torch.hub import load_state_dict_from_url
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
-        model.load_state_dict(state_dict)
+        model_dict = model.state_dict()
+        filter_dict_enc = {k: v for k, v in state_dict.items() if k in model_dict}
+        model_dict.update(filter_dict_enc)
+        model.load_state_dict(model_dict)
+        # model.load_state_dict(state_dict)
     return model
 
 
