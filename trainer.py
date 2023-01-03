@@ -87,7 +87,17 @@ class Trainer:
                 self.models["encoder"].num_ch_enc, self.opt.scales)
             self.models["depth"].to(self.device)
             self.parameters_to_train += list(self.models["depth"].parameters())
-        
+        elif self.opt.depth_network == "RepVGGNet":
+            # Network - RepVGGNet
+            # Encoder
+            self.models["encoder"] = networks.RepVGGencoder(True)
+            self.models["encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["encoder"].parameters())
+            # Decoder
+            self.models["depth"] = networks.DepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
 
 
         if self.use_pose_net:

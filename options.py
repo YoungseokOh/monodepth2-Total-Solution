@@ -21,7 +21,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="choose the deep network",
                                  default="DepthResNet",
-                                 choices=["DepthResNet", "HRLiteNet", "DepthRexNet"])
+                                 choices=["DepthResNet", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
         # PATHS
         self.parser.add_argument("--data_path",
                                  type=str,
