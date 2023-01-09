@@ -12,6 +12,7 @@ from utils import readlines
 from options import MonodepthOptions
 import datasets
 import networks
+import tqdm
 
 cv2.setNumThreads(0)  # This speeds up evaluation 5x on our unix systems (OpenCV 3.3.1)
 
@@ -85,15 +86,18 @@ def evaluate(opt):
                                            [0], 4, is_train=False)
         dataloader = DataLoader(dataset, 16, shuffle=False, num_workers=opt.num_workers,
                                 pin_memory=True, drop_last=False)
-
+        print(f"Evauluation model : {opt.depth_network}")
         if opt.depth_network == "DepthResNet":
-            encoder = networks.ResnetEncoder(opt.num_layers, True)
+            encoder = networks.ResnetEncoder(opt.num_layers, False)
             depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
         elif opt.depth_network == "HRLiteNet":
-            encoder = networks.MobileEncoder(True)
+            encoder = networks.MobileEncoder(False)
             depth_decoder = networks.HRDepthDecoder(encoder.num_ch_enc, opt.scales, mobile_encoder=True)
         elif opt.depth_network == "DepthRexNet":
             encoder = networks.RexnetEncoder(opt.num_layers, False)
+            depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+        elif opt.depth_network == "RepVGGNet":
+            encoder = networks.RepVGGencoder(False)
             depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
         model_dict = encoder.state_dict()
         encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
@@ -110,7 +114,7 @@ def evaluate(opt):
             encoder_dict['width'], encoder_dict['height']))
 
         with torch.no_grad():
-            for data in dataloader:
+            for i, data in tqdm.tqdm(enumerate(dataloader)):
                 input_color = data[("color", 0, 0)].cuda()
 
                 if opt.post_process:
@@ -185,7 +189,7 @@ def evaluate(opt):
     errors = []
     ratios = []
 
-    for i in range(pred_disps.shape[0]):
+    for i in tqdm.tqdm(range(pred_disps.shape[0])):
 
         gt_depth = gt_depths[i]
         gt_height, gt_width = gt_depth.shape[:2]

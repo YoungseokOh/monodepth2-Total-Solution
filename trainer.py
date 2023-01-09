@@ -14,7 +14,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
-
+import os
 import json
 
 from utils import *
@@ -38,9 +38,7 @@ class Trainer:
 
         self.models = {}
         self.parameters_to_train = []
-
-        self.device = torch.device("cpu" if self.opt.no_cuda else "cuda")
-
+        self.device = torch.device("cpu" if self.opt.no_cuda else f"cuda:{self.opt.gpu_number}")
         self.num_scales = len(self.opt.scales)
         self.num_input_frames = len(self.opt.frame_ids)
         self.num_pose_frames = 2 if self.opt.pose_model_input == "pairs" else self.num_input_frames
@@ -67,7 +65,7 @@ class Trainer:
         elif self.opt.depth_network == "HRLiteNet":
             # Network - HRLiteNet
             # Encoder
-            self.models["encoder"] = networks.MobileEncoder(True)
+            self.models["encoder"] = networks.MobileEncoder(self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
             # Decoder
@@ -90,7 +88,7 @@ class Trainer:
         elif self.opt.depth_network == "RepVGGNet":
             # Network - RepVGGNet
             # Encoder
-            self.models["encoder"] = networks.RepVGGencoder(True)
+            self.models["encoder"] = networks.RepVGGencoder(self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
             # Decoder
@@ -102,6 +100,7 @@ class Trainer:
 
         if self.use_pose_net:
             if self.opt.pose_model_type == "separate_resnet":
+                print(f"Using PoseNet type :{self.opt.pose_model_type}")
                 self.models["pose_encoder"] = networks.ResnetEncoder(
                     self.opt.num_layers,
                     self.opt.weights_init == "pretrained",
@@ -187,6 +186,18 @@ class Trainer:
         if not self.opt.no_ssim:
             self.ssim = SSIM()
             self.ssim.to(self.device)
+        # AutoBlur
+        if not self.opt.disable_auto_blur:
+            assert self.opt.receptive_field_of_auto_blur % 2 == 1, \
+                'receptive_field_of_auto_blur should be an odd number'
+            print('AutoBlur is running.')
+            self.auto_blur = networks.AutoBlurModule(
+                self.opt.receptive_field_of_auto_blur,
+                hf_pixel_thresh=self.opt.hf_pixel_thresh,
+                hf_area_percent_thresh=self.opt.hf_area_percent_thresh,
+            )
+            self.auto_blur.to(self.device)
+
 
         self.backproject_depth = {}
         self.project_3d = {}

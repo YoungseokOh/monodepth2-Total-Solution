@@ -22,6 +22,7 @@ class MonodepthOptions:
                                  help="choose the deep network",
                                  default="DepthResNet",
                                  choices=["DepthResNet", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
+        
         # PATHS
         self.parser.add_argument("--data_path",
                                  type=str,
@@ -31,7 +32,38 @@ class MonodepthOptions:
                                  type=str,
                                  help="log directory",
                                  default=os.path.join(os.path.expanduser("~"), "tmp"))
+        
         # TRAINING options
+        self.parser.add_argument("--disable_auto_blur",
+                                 help="if set, disable Auto-Blur",
+                                 default=False, action="store_true")
+        self.parser.add_argument("--receptive_field_of_auto_blur",
+                                 type=int, default=9)
+        self.parser.add_argument("--disable_ambiguity_mask",
+                                 help="if set, disable Ambiguity-Masking",
+                                 default=False,
+                                 action="store_true")
+        self.parser.add_argument("--ambiguity_thresh",
+                                 type=float,
+                                 help="threshold for ambiguous pixels",
+                                 default=0.3)
+        self.parser.add_argument("--hf_pixel_thresh",
+                                 type=float,
+                                 help="hf pixel thresh in Auto-Blur",
+                                 default=0.2)
+        self.parser.add_argument("--hf_area_percent_thresh",
+                                 type=int, default=60)
+        self.parser.add_argument("--ambiguity_by_negative_exponential",
+                                 help='if set, use negative exponential '
+                                      'to replace threshold',
+                                 default=False, action="store_true")
+        self.parser.add_argument("--negative_exponential_coefficient",
+                                 help='coefficient of negative '
+                                      'exponential function',
+                                 type=int, default=3)
+        self.parser.add_argument("--random_seed",
+                                 default=None, type=int)
+
         self.parser.add_argument("--model_name",
                                  type=str,
                                  help="the name of the folder to save the model in",
@@ -39,7 +71,8 @@ class MonodepthOptions:
         self.parser.add_argument("--split",
                                  type=str,
                                  help="which training split to use",
-                                 choices=["eigen_zhou", "eigen_full", "odom", "benchmark"],
+                                 choices=["eigen_zhou", "eigen_full", "odom", "benchmark",
+                                          "cityscapes_preprocessed"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,
@@ -50,7 +83,8 @@ class MonodepthOptions:
                                  type=str,
                                  help="dataset to train on",
                                  default="kitti",
-                                 choices=["kitti", "kitti_odom", "kitti_depth", "kitti_test"])
+                                 choices=["kitti", "kitti_odom", "kitti_depth", "kitti_test",
+                                          "cityscapes_preprocessed"])
         self.parser.add_argument("--png",
                                  help="if set, trains from raw KITTI png files (instead of jpgs)",
                                  action="store_true")
@@ -88,6 +122,7 @@ class MonodepthOptions:
                                  help="frames to load",
                                  default=[0, -1, 1])
 
+
         # OPTIMIZATION options
         self.parser.add_argument("--batch_size",
                                  type=int,
@@ -100,11 +135,11 @@ class MonodepthOptions:
         self.parser.add_argument("--num_epochs",
                                  type=int,
                                  help="number of epochs",
-                                 default=30)
+                                 default=20)
         self.parser.add_argument("--scheduler_step_size",
                                  type=int,
                                  help="step size of the scheduler",
-                                 default=12)
+                                 default=15)
         self.parser.add_argument("--lr_scheduler",
                                  type=str,
                                  help="Choose lr_sheduler",
@@ -140,7 +175,7 @@ class MonodepthOptions:
         self.parser.add_argument("--pose_model_type",
                                  type=str,
                                  help="normal or shared",
-                                 default="shared",
+                                 default="separate_resnet",
                                  choices=["posecnn", "separate_resnet", "shared"])
 
         # SYSTEM options
@@ -151,6 +186,9 @@ class MonodepthOptions:
                                  type=int,
                                  help="number of dataloader workers",
                                  default=12)
+        self.parser.add_argument("--gpu_number",
+                                 help="When you want to choose GPU number",
+                                 default=0)
 
         # LOADING options
         self.parser.add_argument("--load_weights_folder",

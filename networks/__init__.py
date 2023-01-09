@@ -5,4 +5,5 @@ from .hr_depth_decoder import HRDepthDecoder
 from .pose_decoder import PoseDecoder
 from .rexnet_encoder import RexnetEncoder
 from .pose_cnn import PoseCNN
+from .auto_blur import AutoBlurModule
 from .repVGG_encoder import RepVGGencoder

@@ -170,8 +170,8 @@ class MobileEncoder(nn.Module):
 
         self.num_ch_enc = np.array([16, 24, 40, 80, 160])
         self.encoder = MobileNetV3()
-        if pretrained:
-            state_dict = torch.load("pretrain_model/mobilenetV3/mobilenetv3-large-1cd25616.pth")
+        if pretrained == "pretrained":
+            state_dict = torch.load("pretrained_model/mobilenetV3/mobilenetv3-large-1cd25616.pth")
             filter_dict_enc = {k: v for k, v in state_dict.items() if k in self.encoder.state_dict()}
             self.encoder.load_state_dict(filter_dict_enc)
 
