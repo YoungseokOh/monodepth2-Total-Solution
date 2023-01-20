@@ -7,3 +7,4 @@ from .rexnet_encoder import RexnetEncoder
 from .pose_cnn import PoseCNN
 from .auto_blur import AutoBlurModule
 from .repVGG_encoder import RepVGGencoder
+from .dnet_decoder import Dnet_DepthDecoder

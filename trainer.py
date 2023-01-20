@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 import os
 import json
+import random
 
 from utils import *
 from kitti_utils import *
@@ -49,60 +50,82 @@ class Trainer:
 
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
-
+        
+        # Encoder selection block
         if self.opt.depth_network == "DepthResNet":
+            print(f'--- ResNet-{self.opt.num_layers} ---')
             # Network - DepthResNet(Monodepth2)
             # Encoder
             self.models["encoder"] = networks.ResnetEncoder(
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
-            # Decoder
-            self.models["depth"] = networks.DepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-            self.models["depth"].to(self.device)
-            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.depth_network == "HRLiteNet":
+            print('--- HRLiteNet(MobileNetv3) ---')
             # Network - HRLiteNet
             # Encoder
             self.models["encoder"] = networks.MobileEncoder(self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
-            # Decoder
-            self.models["depth"] = networks.HRDepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
-            self.models["depth"].to(self.device)
-            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.depth_network == "DepthRexNet":
+            print('--- DepthRexNet ---')
             # Network - DepthRexNet
             # Encoder
             self.models["encoder"] = networks.RexnetEncoder(
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
-            # Decoder
-            self.models["depth"] = networks.DepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-            self.models["depth"].to(self.device)
-            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.depth_network == "RepVGGNet":
+            print('--- RepVGGNet ---')
             # Network - RepVGGNet
             # Encoder
             self.models["encoder"] = networks.RepVGGencoder(self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
-            # Decoder
-            self.models["depth"] = networks.DepthDecoder(
+        
+        # Decoder selection block
+        if self.opt.decoder == 'Dnet':
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+                print('----- Dnet_decoder is loaded -----')
+                self.models["depth"] = networks.Dnet_DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
+                self.models["depth"].to(self.device)
+                self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.decoder == 'Original':
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+                print('----- Original_decoder is loaded -----')
+                self.models["depth"] = networks.DepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+                self.models["depth"].to(self.device)
+                self.parameters_to_train += list(self.models["depth"].parameters())
+        
+        if self.opt.depth_network == "HRLiteNet":
+            print('----- HRDepth_decoder is loaded -----')
+            self.models["depth"] = networks.HRDepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
             self.models["depth"].to(self.device)
             self.parameters_to_train += list(self.models["depth"].parameters())
 
-
+        # PoseNet
         if self.use_pose_net:
             if self.opt.pose_model_type == "separate_resnet":
-                print(f"Using PoseNet type :{self.opt.pose_model_type}")
+                print(f"----- Using PoseNet type : {self.opt.pose_model_type} -----")
                 self.models["pose_encoder"] = networks.ResnetEncoder(
                     self.opt.num_layers,
+                    self.opt.weights_init == "pretrained",
+                    num_input_images=self.num_pose_frames)
+
+                self.models["pose_encoder"].to(self.device)
+                self.parameters_to_train += list(self.models["pose_encoder"].parameters())
+
+                self.models["pose"] = networks.PoseDecoder(
+                    self.models["pose_encoder"].num_ch_enc,
+                    num_input_features=1,
+                    num_frames_to_predict_for=2)
+            # Separated_repVGG for PoseNet.
+            elif self.opt.pose_model_type == "separate_repVGG":
+                print(f"----- Using PoseNet type : {self.opt.pose_model_type} -----")
+                self.models["pose_encoder"] = networks.RepVGGencoder(
                     self.opt.weights_init == "pretrained",
                     num_input_images=self.num_pose_frames)
 
@@ -170,7 +193,8 @@ class Trainer:
             self.opt.frame_ids, 4, is_train=True, img_ext=img_ext)
         self.train_loader = DataLoader(
             train_dataset, self.opt.batch_size, True,
-            num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
+            num_workers=self.opt.num_workers, pin_memory=True, drop_last=True,
+            worker_init_fn=worker_seed_fn)
         val_dataset = self.dataset(
             self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
             self.opt.frame_ids, 4, is_train=False, img_ext=img_ext)
@@ -190,13 +214,15 @@ class Trainer:
         if not self.opt.disable_auto_blur:
             assert self.opt.receptive_field_of_auto_blur % 2 == 1, \
                 'receptive_field_of_auto_blur should be an odd number'
-            print('AutoBlur is running.')
+            print('--- AutoBlur is running ---')
             self.auto_blur = networks.AutoBlurModule(
                 self.opt.receptive_field_of_auto_blur,
                 hf_pixel_thresh=self.opt.hf_pixel_thresh,
                 hf_area_percent_thresh=self.opt.hf_area_percent_thresh,
             )
             self.auto_blur.to(self.device)
+        else:
+            print('--- disable AutoBlur ---')
 
 
         self.backproject_depth = {}
@@ -335,6 +361,8 @@ class Trainer:
                         pose_inputs = [pose_feats[0], pose_feats[f_i]]
 
                     if self.opt.pose_model_type == "separate_resnet":
+                        pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
+                    elif self.opt.pose_model_type == "separate_repVGG":
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
                     elif self.opt.pose_model_type == "posecnn":
                         pose_inputs = torch.cat(pose_inputs, 1)
@@ -681,3 +709,10 @@ class Trainer:
             self.model_optimizer.load_state_dict(optimizer_dict)
         else:
             print("Cannot find Adam weights so Adam is randomly initialized")
+
+
+def worker_seed_fn(worker_id):
+    worker_seed = torch.initial_seed() % 2 ** 32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+

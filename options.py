@@ -22,6 +22,11 @@ class MonodepthOptions:
                                  help="choose the deep network",
                                  default="DepthResNet",
                                  choices=["DepthResNet", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
+        self.parser.add_argument("--decoder",
+                                 type=str,
+                                 help="choose the depth decoder : [Original, Dnet]",
+                                 default="Original",
+                                 choices=["original", "Dnet"])
         
         # PATHS
         self.parser.add_argument("--data_path",
@@ -176,7 +181,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="normal or shared",
                                  default="separate_resnet",
-                                 choices=["posecnn", "separate_resnet", "shared"])
+                                 choices=["posecnn", "separate_resnet", "separate_repVGG", "shared"])
 
         # SYSTEM options
         self.parser.add_argument("--no_cuda",

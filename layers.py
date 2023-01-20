@@ -242,6 +242,12 @@ def upsample(x):
     return F.interpolate(x, scale_factor=2, mode="nearest")
 
 
+def upsample_DNet(x, sf=2):
+    """Upsample input tensor by a factor
+    """
+    return F.interpolate(x, scale_factor=sf, mode="nearest")
+
+
 def get_smooth_loss(disp, img):
     """Computes the smoothness loss for a disparity image
     The color image is used for edge-aware smoothness
