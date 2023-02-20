@@ -51,7 +51,7 @@ def resnet_multiimage_input(num_layers, pretrained=False, num_input_images=1):
     blocks = {18: [2, 2, 2, 2], 50: [3, 4, 6, 3]}[num_layers]
     block_type = {18: models.resnet.BasicBlock, 50: models.resnet.Bottleneck}[num_layers]
     model = ResNetMultiImageInput(block_type, blocks, num_input_images=num_input_images)
-
+    print(f'----- PoseNet : ResNet-{num_layers} -----')
     if pretrained:
         loaded = model_zoo.load_url(models.resnet.model_urls['resnet{}'.format(num_layers)])
         loaded['conv1.weight'] = torch.cat(
@@ -68,18 +68,25 @@ class ResnetEncoder(nn.Module):
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
+        # Original code.
         resnets = {18: models.resnet18,
                    34: models.resnet34,
                    50: models.resnet50,
                    101: models.resnet101,
                    152: models.resnet152}
-
+        
+        # For the Depth : ResNet-18, Pose : ResNet-50
+        # resnets = {50: models.resnet18,
+        #            18: models.resnet18}
+        
         if num_layers not in resnets:
             raise ValueError("{} is not a valid number of resnet layers".format(num_layers))
 
         if num_input_images > 1:
             self.encoder = resnet_multiimage_input(num_layers, pretrained, num_input_images)
         else:
+            # For the Depth : ResNet-18, Pose : ResNet-50
+            # num_layers = 18
             self.encoder = resnets[num_layers](pretrained)
 
         if num_layers > 34:

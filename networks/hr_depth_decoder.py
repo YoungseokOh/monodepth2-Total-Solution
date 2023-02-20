@@ -14,7 +14,9 @@ class HRDepthDecoder(nn.Module):
         if mobile_encoder:
             self.num_ch_dec = np.array([4, 12, 20, 40, 80])
         else:
-            self.num_ch_dec = np.array([16, 32, 64, 128, 256])
+            # self.num_ch_dec = np.array([16, 48, 48, 96, 640])
+            self.num_ch_dec = np.array([16, 24, 48, 96, 640])
+            # self.num_ch_dec = np.array([16, 32, 64, 128, 256])
 
         self.all_position = ["01", "11", "21", "31", "02", "12", "22", "03", "13", "04"]
         self.attention_position = ["31", "22", "13", "04"]
@@ -22,14 +24,23 @@ class HRDepthDecoder(nn.Module):
 
         self.convs = nn.ModuleDict()
         for j in range(5):
+            # for i in range(5 - j):
             for i in range(5 - j):
                 # upconv 0
+                print(f" i : {i}, j : {j}")
+                # if j > 0 and i == 4:
+                #     num_ch_in = num_ch_enc[i]
+                # elif i >= 0 and i != 4:
+                #     num_ch_in = num_ch_enc[i+1]
                 num_ch_in = num_ch_enc[i]
                 if i == 0 and j != 0:
                     num_ch_in /= 2
                 num_ch_out = num_ch_in / 2
                 self.convs["X_{}{}_Conv_0".format(i, j)] = ConvBlock(num_ch_in, num_ch_out)
-
+                if i <= 4:
+                    num_ch_in /= 2
+                    num_ch_out = num_ch_in / 2
+                    self.convs["X_{}{}_Conv_2".format(i, j)] = ConvBlock(num_ch_in, num_ch_out)
                 # X_04 upconv 1, only add X_04 convolution
                 if i == 0 and j == 4:
                     num_ch_in = num_ch_out
@@ -44,9 +55,16 @@ class HRDepthDecoder(nn.Module):
                 self.convs["X_" + index + "_attention"] = fSEModule(num_ch_enc[row + 1] // 2, self.num_ch_enc[row]
                                                                     + self.num_ch_dec[row] * 2 * (col - 1),
                                                                     output_channel=self.num_ch_dec[row] * 2)
+                
             else:
                 self.convs["X_" + index + "_attention"] = fSEModule(num_ch_enc[row + 1] // 2, self.num_ch_enc[row]
                                                                     + self.num_ch_dec[row + 1] * (col - 1))
+
+                if not row == 3:
+                    # self.convs["X_" + index + "_attention"] = fSEModule(num_ch_enc[row + 1] // 2,
+                    #                                                 + self.num_ch_dec[row + 1])
+                    self.convs["X_" + index + "_downsample"] = Conv1x1(num_ch_enc[row + 2] // 2,
+                                                                        self.num_ch_dec[row + 1])
         for index in self.non_attention_position:
             row = int(index[0])
             col = int(index[1])
@@ -103,12 +121,19 @@ class HRDepthDecoder(nn.Module):
             low_features = []
             for i in range(col):
                 low_features.append(features["X_{}{}".format(row, i)])
-
+                print(f"low_features X_{row}{i}")
             # add fSE block to decoder
             if index in self.attention_position:
-                features["X_" + index] = self.convs["X_" + index + "_attention"](
-                    self.convs["X_{}{}_Conv_0".format(row + 1, col - 1)](features["X_{}{}".format(row + 1, col - 1)]),
-                    low_features)
+                # Only '31' index
+                if index == '31':
+                    features["X_" + index] = self.convs["X_" + index + "_attention"](
+                        self.convs["X_{}{}_Conv_0".format(row + 1, col - 1)](features["X_{}{}".format(row + 1, col - 1)]),
+                        low_features)
+                else:
+                    features["X_{}{}".format(row + 1, col - 1)] = self.convs["X_" + index + "_downsample"](features["X_{}{}".format(row + 1, col - 1)])
+                    features["X_" + index] = self.convs["X_" + index + "_attention"](
+                            self.convs["X_{}{}_Conv_2".format(row + 1, col - 1)](features["X_{}{}".format(row + 1, col - 1)]),
+                            low_features)
             elif index in self.non_attention_position:
                 conv = [self.convs["X_{}{}_Conv_0".format(row + 1, col - 1)],
                         self.convs["X_{}{}_Conv_1".format(row + 1, col - 1)]]

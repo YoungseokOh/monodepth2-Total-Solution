@@ -53,7 +53,7 @@ class Trainer:
         
         # Encoder selection block
         if self.opt.depth_network == "DepthResNet":
-            print(f'--- ResNet-{self.opt.num_layers} ---')
+            print(f'----- ResNet-{self.opt.num_layers} -----')
             # Network - DepthResNet(Monodepth2)
             # Encoder
             self.models["encoder"] = networks.ResnetEncoder(
@@ -61,14 +61,14 @@ class Trainer:
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
         elif self.opt.depth_network == "HRLiteNet":
-            print('--- HRLiteNet(MobileNetv3) ---')
+            print('----- HRLiteNet(MobileNetv3) -----')
             # Network - HRLiteNet
             # Encoder
             self.models["encoder"] = networks.MobileEncoder(self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
         elif self.opt.depth_network == "DepthRexNet":
-            print('--- DepthRexNet ---')
+            print('----- DepthRexNet -----')
             # Network - DepthRexNet
             # Encoder
             self.models["encoder"] = networks.RexnetEncoder(
@@ -76,7 +76,7 @@ class Trainer:
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
         elif self.opt.depth_network == "RepVGGNet":
-            print('--- RepVGGNet ---')
+            print('----- RepVGGNet -----')
             # Network - RepVGGNet
             # Encoder
             self.models["encoder"] = networks.RepVGGencoder(self.opt.weights_init == "pretrained")
@@ -86,15 +86,22 @@ class Trainer:
         # Decoder selection block
         if self.opt.decoder == 'Dnet':
             if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
-                print('----- Dnet_decoder is loaded -----')
+                print('----- Dnet_Decoder is loaded -----')
                 self.models["depth"] = networks.Dnet_DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
-        elif self.opt.decoder == 'Original':
+        elif self.opt.decoder == 'original':
             if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
-                print('----- Original_decoder is loaded -----')
+                print('----- Original_Decoder is loaded -----')
                 self.models["depth"] = networks.DepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+                self.models["depth"].to(self.device)
+                self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.decoder == 'HR_decoder':
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+                print('----- HR_Depth_Decoder is loaded -----')
+                self.models["depth"] = networks.HRDepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
@@ -309,6 +316,12 @@ class Trainer:
         """
         for key, ipt in inputs.items():
             inputs[key] = ipt.to(self.device)
+        if not self.opt.disable_auto_blur:
+            for scale in self.opt.scales:
+                for f_i in self.opt.frame_ids:
+                    inputs[('raw_color', f_i, scale)] = inputs[('color', f_i, scale)]
+                    inputs[('color', f_i, scale)] = self.auto_blur(
+                        inputs[('color', f_i, scale)])
 
         if self.opt.pose_model_type == "shared":
             # If we are using a shared encoder for both depth and pose (as advocated
@@ -501,7 +514,8 @@ class Trainer:
                 source_scale = 0
 
             disp = outputs[("disp", scale)]
-            color = inputs[("color", 0, scale)]
+            color = inputs[("color", 0, scale)] if self.opt.disable_ambiguity_mask \
+                else inputs[('raw_color', 0, scale)]
             target = inputs[("color", 0, source_scale)]
 
             for frame_id in self.opt.frame_ids[1:]:
@@ -543,6 +557,28 @@ class Trainer:
                 reprojection_loss = reprojection_losses.mean(1, keepdim=True)
             else:
                 reprojection_loss = reprojection_losses
+            
+            # AutoBlur
+            if not self.opt.disable_ambiguity_mask:
+                ambiguity_mask = self.compute_ambiguity_mask(
+                    inputs, outputs, reprojection_loss, scale)
+            if not self.opt.disable_automasking:
+                # add random numbers to break ties
+                identity_reprojection_loss += torch.randn(
+                    identity_reprojection_loss.shape, device=self.device) * 0.00001
+
+                combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
+            else:
+                combined = reprojection_loss
+
+            if combined.shape[1] == 1:
+                to_optimise = combined
+            else:
+                to_optimise, idxs = torch.min(combined, dim=1)
+
+            if not self.opt.disable_ambiguity_mask:
+                to_optimise = to_optimise * ambiguity_mask
+
 
             if not self.opt.disable_automasking:
                 # add random numbers to break ties
@@ -575,6 +611,59 @@ class Trainer:
         total_loss /= self.num_scales
         losses["loss"] = total_loss
         return losses
+    
+    @staticmethod
+    def extract_ambiguity(ipt):
+        grad_r = ipt[:, :, :, :-1] - ipt[:, :, :, 1:]
+        grad_b = ipt[:, :, :-1, :] - ipt[:, :, 1:, :]
+
+        grad_l = F.pad(grad_r, (1, 0))
+        grad_r = F.pad(grad_r, (0, 1))
+
+        grad_t = F.pad(grad_b, (0, 0, 1, 0))
+        grad_b = F.pad(grad_b, (0, 0, 0, 1))
+
+        is_u_same_sign = ((grad_l * grad_r) > 0).any(dim=1, keepdim=True)
+        is_v_same_sign = ((grad_t * grad_b) > 0).any(dim=1, keepdim=True)
+        is_same_sign = torch.logical_or(is_u_same_sign, is_v_same_sign)
+
+        grad_u = (grad_l.abs() + grad_r.abs()).sum(1, keepdim=True) / 2
+        grad_v = (grad_t.abs() + grad_b.abs()).sum(1, keepdim=True) / 2
+        grad = torch.sqrt(grad_u ** 2 + grad_v ** 2)
+
+        ambiguity = grad * is_same_sign
+        return ambiguity
+
+
+    def compute_ambiguity_mask(self, inputs, outputs,
+                               reprojection_loss, scale):
+        src_scale = scale if self.opt.v1_multiscale else 0
+        min_reproj, min_idx = torch.min(reprojection_loss, dim=1)
+
+        target_ambiguity = self.extract_ambiguity(inputs[("color", 0, src_scale)])
+
+        reproj_ambiguities = []
+        for f_i in self.opt.frame_ids[1:]:
+            src_ambiguity = self.extract_ambiguity(inputs[("color", f_i, src_scale)])
+
+            reproj_ambiguity = F.grid_sample(
+                src_ambiguity, outputs[("sample", f_i, scale)],
+                padding_mode="border", align_corners=True)
+            reproj_ambiguities.append(reproj_ambiguity)
+
+        reproj_ambiguities = torch.cat(reproj_ambiguities, dim=1)
+        reproj_ambiguity = torch.gather(reproj_ambiguities, 1, min_idx.unsqueeze(1))
+
+        synthetic_ambiguity, _ = torch.cat(
+            [target_ambiguity, reproj_ambiguity], dim=1).max(dim=1)
+
+        if self.opt.ambiguity_by_negative_exponential:
+            ambiguity_mask = torch.exp(-self.opt.negative_exponential_coefficient
+                                       * synthetic_ambiguity)
+        else:
+            ambiguity_mask = synthetic_ambiguity < self.opt.ambiguity_thresh
+        return ambiguity_mask
+
 
     def compute_depth_losses(self, inputs, outputs, losses):
         """Compute depth metrics, to allow monitoring during training

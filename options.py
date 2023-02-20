@@ -25,8 +25,8 @@ class MonodepthOptions:
         self.parser.add_argument("--decoder",
                                  type=str,
                                  help="choose the depth decoder : [Original, Dnet]",
-                                 default="Original",
-                                 choices=["original", "Dnet"])
+                                 default="original",
+                                 choices=["original", "Dnet", "HR_decoder"])
         
         # PATHS
         self.parser.add_argument("--data_path",

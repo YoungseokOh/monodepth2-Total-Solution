@@ -72,7 +72,7 @@ class RepVGGencoder(nn.Module):
         else:
             self.encoder = RepVGG.create_RepVGG_A0(deploy=False)
             if pretrained:
-                print('-----RepVGG pretrained model is loaded.-----')
+                print('----- RepVGG pretrained model is loaded.-----')
                 self.encoder.load_state_dict(
                     torch.load('pretrained_model/repVGG/RepVGG-A0-train.pth'))
 
