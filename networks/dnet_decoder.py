@@ -40,8 +40,11 @@ class Dnet_DepthDecoder(nn.Module):
                 num_ch_in += self.num_ch_enc[i - 1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 1)] = ConvBlock(num_ch_in, num_ch_out)
+            # CBAM
+            # self.convs[("ca", i)] = ChannelAttention(num_ch_in)
+            # self.convs[("sa", i)] = SpatialAttention()
             # ECA (Efficient Channel Attention)
-            self.convs[("eca"), i]  = eca_layer(num_ch_in)
+            self.convs[("eca", i)]  = eca_layer(num_ch_in)
             # SE Block
             # self.convs[("SEblock", i)] = SEBlock(num_ch_in, num_ch_out)
 

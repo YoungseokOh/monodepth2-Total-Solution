@@ -8,12 +8,14 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
+import networks.resnet_cbam as resnet_cbam
 import torch
 import torch.nn as nn
 import torchvision.models as models
 import torch.utils.model_zoo as model_zoo
+from .resnet_cbam import *
 
-class ResNetMultiImageInput(models.ResNet):
+class ResNetMultiImageInput(resnet_cbam.ResNet):
     """Constructs a resnet model with varying number of input images.
     Adapted from https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
     """
@@ -42,37 +44,39 @@ class ResNetMultiImageInput(models.ResNet):
 def resnet_multiimage_input(num_layers, pretrained=False, num_input_images=1):
     """Constructs a ResNet model.
     Args:
-        num_layers (int): Number of resnet layers. Must be 18 or 50
+        num_layers (int): Number of resnet_cbam layers. Must be 18 or 50
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         num_input_images (int): Number of frames stacked as input
     """
     assert num_layers in [18, 50], "Can only run with 18 or 50 layer resnet"
     blocks = {18: [2, 2, 2, 2], 50: [3, 4, 6, 3]}[num_layers]
-    block_type = {18: models.resnet.BasicBlock, 50: models.resnet.Bottleneck}[num_layers]
+    block_type = {18: resnet_cbam.BasicBlock, 50: resnet_cbam.Bottleneck}[num_layers]
     model = ResNetMultiImageInput(block_type, blocks, num_input_images=num_input_images)
-    print(f'----- PoseNet : ResNet-{num_layers} -----')
+    print(f'----- PoseNet : ResNet-CBAM{num_layers} -----')
     if pretrained:
-        loaded = model_zoo.load_url(models.resnet.model_urls['resnet{}'.format(num_layers)])
+        loaded = model_zoo.load_url(resnet_cbam.model_urls['resnet{}'.format(num_layers)])
         loaded['conv1.weight'] = torch.cat(
             [loaded['conv1.weight']] * num_input_images, 1) / num_input_images
-        model.load_state_dict(loaded)
+        now_loaded_dict = model.state_dict()
+        now_loaded_dict.update(loaded)
+        model.load_state_dict(now_loaded_dict)
     return model
 
 
-class ResnetEncoder(nn.Module):
+class ResnetCbamEncoder(nn.Module):
     """Pytorch module for a resnet encoder
     """
     def __init__(self, num_layers, pretrained, num_input_images=1):
-        super(ResnetEncoder, self).__init__()
+        super(ResnetCbamEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
         # Original code.
-        resnets = {18: models.resnet18,
-                   34: models.resnet34,
-                   50: models.resnet50,
-                   101: models.resnet101,
-                   152: models.resnet152}
+        resnets = {18: resnet18_cbam,
+                   34: resnet34_cbam,
+                   50: resnet50_cbam,
+                   101: resnet101_cbam,
+                   152: resnet152_cbam}
         
         # For the Depth : ResNet-18, Pose : ResNet-50
         # resnets = {50: models.resnet18,

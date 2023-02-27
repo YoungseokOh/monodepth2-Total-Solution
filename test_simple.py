@@ -30,18 +30,35 @@ def parse_args():
 
     parser.add_argument('--image_path', type=str,
                         help='path to a test image or folder of images', required=True)
-    parser.add_argument('--model_name', type=str,
-                        help='name of a pretrained model to use',
-                        choices=[
-                            "mono_640x192",
-                            "stereo_640x192",
-                            "mono+stereo_640x192",
-                            "mono_no_pt_640x192",
-                            "stereo_no_pt_640x192",
-                            "mono+stereo_no_pt_640x192",
-                            "mono_1024x320",
-                            "stereo_1024x320",
-                            "mono+stereo_1024x320"])
+    parser.add_argument('--model_path', type=str,
+                        help='name of trained model to inference',
+                        default="")
+    parser.add_argument('--num_epoch', type=int,
+                        help='name of trained model to inference',
+                        default=19)
+    # parser.add_argument('--model_name', type=str,
+    #                     help='name of a pretrained model to use',
+    #                     choices=[
+    #                         "mono_640x192",
+    #                         "stereo_640x192",
+    #                         "mono+stereo_640x192",
+    #                         "mono_no_pt_640x192",
+    #                         "stereo_no_pt_640x192",
+    #                         "mono+stereo_no_pt_640x192",
+    #                         "mono_1024x320",
+    #                         "stereo_1024x320",
+    #                         "mono+stereo_1024x320"])
+    # Deep Network
+    parser.add_argument("--depth_network",
+                                 type=str,
+                                 help="choose the deep network",
+                                 default="DepthResNet",
+                                 choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
+    parser.add_argument("--decoder",
+                                 type=str,
+                                 help="choose the depth decoder : [Original, Dnet, HR_decoder]",
+                                 default="original",
+                                 choices=["original", "Dnet", "HR_decoder"])
     parser.add_argument('--ext', type=str,
                         help='image extension to search for in folder', default="jpg")
     parser.add_argument("--no_cuda",
@@ -58,7 +75,7 @@ def parse_args():
 def test_simple(args):
     """Function to predict for a single image or folder of images
     """
-    assert args.model_name is not None, \
+    assert args.model_path is not None, \
         "You must specify the --model_name parameter; see README.md for an example"
 
     if torch.cuda.is_available() and not args.no_cuda:
@@ -66,19 +83,46 @@ def test_simple(args):
     else:
         device = torch.device("cpu")
 
-    if args.pred_metric_depth and "stereo" not in args.model_name:
+    if args.pred_metric_depth and "stereo" not in args.model_path:
         print("Warning: The --pred_metric_depth flag only makes sense for stereo-trained KITTI "
               "models. For mono-trained models, output depths will not in metric space.")
-
-    download_model_if_doesnt_exist(args.model_name)
-    model_path = os.path.join("models", args.model_name)
+    # Download model for monodepth2
+    # download_model_if_doesnt_exist(args.model_name)
+    model_path = os.path.join(args.model_path, "models/weights_{}".format(args.num_epoch - 1))
     print("-> Loading model from ", model_path)
     encoder_path = os.path.join(model_path, "encoder.pth")
     depth_decoder_path = os.path.join(model_path, "depth.pth")
 
     # LOADING PRETRAINED MODEL
-    print("   Loading pretrained encoder")
-    encoder = networks.ResnetEncoder(18, False)
+    print("Loading pretrained encoder")
+    if args.depth_network == "DepthResNet":
+            print(f'----- DepthResNet-----')
+            # Network - DepthResNet(Monodepth2)
+            # Encoder
+            encoder = networks.ResnetEncoder(18, False)
+    elif args.depth_network == "DepthResNet_CBAM":
+        print(f'----- DepthResNet_CBAM -----')
+        # Network - DepthResNet-CBAM
+        # Encoder
+        encoder = networks.ResnetCbamEncoder(18, False)
+    elif args.depth_network == "HRLiteNet":
+        print('----- HRLiteNet(MobileNetv3) -----')
+        # Network - HRLiteNet
+        # Encoder
+        encoder = networks.MobileEncoder(False)
+    elif args.depth_network == "DepthRexNet":
+        print('----- DepthRexNet -----')
+        # Network - DepthRexNet
+        # Encoder
+        encoder = networks.RexnetEncoder(18, False)
+    elif args.depth_network == "RepVGGNet":
+        print('----- RepVGGNet -----')
+        # Network - RepVGGNet
+        # Encoder
+        encoder = networks.RepVGGencoder(False)
+
+    # encoder = networks.ResnetEncoder(18, False)
+
     loaded_dict_enc = torch.load(encoder_path, map_location=device)
 
     # extract the height and width of image that this model was trained with
@@ -89,9 +133,32 @@ def test_simple(args):
     encoder.to(device)
     encoder.eval()
 
+    # Decoder selection block
     print("   Loading pretrained decoder")
-    depth_decoder = networks.DepthDecoder(
-        num_ch_enc=encoder.num_ch_enc, scales=range(4))
+    if args.decoder == 'Dnet':
+        if args.depth_network == "DepthResNet" or args.depth_network == "DepthResNet_CBAM" or args.depth_network == "RepVGGNet" or args.depth_network == "DepthRexNet":
+            print('----- Dnet_Decoder is loaded -----')
+            depth_decoder = networks.Dnet_DepthDecoder(
+            num_ch_enc=encoder.num_ch_enc, scales=range(4))
+    elif args.decoder == 'original':
+        if args.depth_network == "DepthResNet" or args.depth_network == "DepthResNet_CBAM" or args.depth_network == "RepVGGNet" or args.depth_network == "DepthRexNet":
+            print('----- Original_Decoder is loaded -----')
+            depth_decoder = networks.DepthDecoder(
+            num_ch_enc=encoder.num_ch_enc, scales=range(4))
+    elif args.decoder == 'HR_decoder':
+        if args.depth_network == "DepthResNet" or args.depth_network == "DepthResNet_CBAM" or args.depth_network == "RepVGGNet" or args.depth_network == "DepthRexNet":
+            print('----- HR_Depth_Decoder is loaded -----')
+            depth_decoder = networks.HRDepthDecoder(
+            num_ch_enc=encoder.num_ch_enc, scales=range(4))
+    # if self.opt.depth_network == "HRLiteNet":
+    #     print('----- HRDepth_decoder is loaded -----')
+    #     self.models["depth"] = networks.HRDepthDecoder(
+    #     self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
+    #     self.models["depth"].to(self.device)
+    #     self.parameters_to_train += list(self.models["depth"].parameters())
+
+    # depth_decoder = networks.DepthDecoder(
+    #     num_ch_enc=encoder.num_ch_enc, scales=range(4))
 
     loaded_dict = torch.load(depth_decoder_path, map_location=device)
     depth_decoder.load_state_dict(loaded_dict)
@@ -99,15 +166,17 @@ def test_simple(args):
     depth_decoder.to(device)
     depth_decoder.eval()
 
+
+    if not os.path.exists(os.path.join(args.image_path, 'results')):
+        os.makedirs(os.path.join(args.image_path, 'results'))
+    output_directory = os.path.join(args.image_path, 'results')
     # FINDING INPUT IMAGES
     if os.path.isfile(args.image_path):
         # Only testing on a single image
         paths = [args.image_path]
-        output_directory = os.path.dirname(args.image_path)
     elif os.path.isdir(args.image_path):
         # Searching folder for images
         paths = glob.glob(os.path.join(args.image_path, '*.{}'.format(args.ext)))
-        output_directory = args.image_path
     else:
         raise Exception("Can not find args.image_path: {}".format(args.image_path))
 

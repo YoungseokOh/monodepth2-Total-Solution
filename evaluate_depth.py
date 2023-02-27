@@ -91,6 +91,9 @@ def evaluate(opt):
             encoder = networks.ResnetEncoder(opt.num_layers, False)
             depth_decoder = networks.Dnet_DepthDecoder(encoder.num_ch_enc)
             # depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+        elif opt.depth_network == "DepthResNet_CBAM":
+            encoder = networks.ResnetCbamEncoder(opt.num_layers, False)
+            depth_decoder = networks.Dnet_DepthDecoder(encoder.num_ch_enc)
         elif opt.depth_network == "HRLiteNet":
             encoder = networks.MobileEncoder(False)
             depth_decoder = networks.HRDepthDecoder(encoder.num_ch_enc, opt.scales, mobile_encoder=True)

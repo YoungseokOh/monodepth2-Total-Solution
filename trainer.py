@@ -60,6 +60,14 @@ class Trainer:
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
+        elif self.opt.depth_network == "DepthResNet_CBAM":
+            print(f'----- DepthResNet_CBAM-{self.opt.num_layers} -----')
+            # Network - DepthResNet-CBAM
+            # Encoder
+            self.models["encoder"] = networks.ResnetCbamEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained")
+            self.models["encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["encoder"].parameters())
         elif self.opt.depth_network == "HRLiteNet":
             print('----- HRLiteNet(MobileNetv3) -----')
             # Network - HRLiteNet
@@ -85,21 +93,21 @@ class Trainer:
         
         # Decoder selection block
         if self.opt.decoder == 'Dnet':
-            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
                 print('----- Dnet_Decoder is loaded -----')
                 self.models["depth"] = networks.Dnet_DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'original':
-            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
                 print('----- Original_Decoder is loaded -----')
                 self.models["depth"] = networks.DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'HR_decoder':
-            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
                 print('----- HR_Depth_Decoder is loaded -----')
                 self.models["depth"] = networks.HRDepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
@@ -115,6 +123,7 @@ class Trainer:
 
         # PoseNet
         if self.use_pose_net:
+            # Resnet-18
             if self.opt.pose_model_type == "separate_resnet":
                 print(f"----- Using PoseNet type : {self.opt.pose_model_type} -----")
                 self.models["pose_encoder"] = networks.ResnetEncoder(
@@ -124,7 +133,20 @@ class Trainer:
 
                 self.models["pose_encoder"].to(self.device)
                 self.parameters_to_train += list(self.models["pose_encoder"].parameters())
+                self.models["pose"] = networks.PoseDecoder(
+                    self.models["pose_encoder"].num_ch_enc,
+                    num_input_features=1,
+                    num_frames_to_predict_for=2)
+            # resNet-CBAM
+            if self.opt.pose_model_type == "separate_resnet_cbam":
+                print(f"----- Using PoseNet type : {self.opt.pose_model_type} -----")
+                self.models["pose_encoder"] = networks.ResnetCbamEncoder(
+                    self.opt.num_layers,
+                    self.opt.weights_init == "pretrained",
+                    num_input_images=self.num_pose_frames)
 
+                self.models["pose_encoder"].to(self.device)
+                self.parameters_to_train += list(self.models["pose_encoder"].parameters())
                 self.models["pose"] = networks.PoseDecoder(
                     self.models["pose_encoder"].num_ch_enc,
                     num_input_features=1,
@@ -373,7 +395,8 @@ class Trainer:
                     else:
                         pose_inputs = [pose_feats[0], pose_feats[f_i]]
 
-                    if self.opt.pose_model_type == "separate_resnet":
+                    if self.opt.pose_model_type == "separate_resnet" or \
+                    self.opt.pose_model_type == "separate_resnet_cbam":
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
                     elif self.opt.pose_model_type == "separate_repVGG":
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
