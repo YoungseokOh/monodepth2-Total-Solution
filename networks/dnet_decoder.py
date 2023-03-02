@@ -44,13 +44,13 @@ class Dnet_DepthDecoder(nn.Module):
             # self.convs[("ca", i)] = ChannelAttention(num_ch_in)
             # self.convs[("sa", i)] = SpatialAttention()
             # ECA (Efficient Channel Attention)
-            self.convs[("eca", i)]  = eca_layer(num_ch_in)
+            # self.convs[("eca", i)]  = eca_layer(num_ch_in)
             # SE Block
             # self.convs[("SEblock", i)] = SEBlock(num_ch_in, num_ch_out)
 
         for s in self.scales:
             self.convs[("dconv", s)]  = Conv3x3(self.num_ch_dec[s], 8)
-            self.convs[("Hier_SEblock", s)] = SEBlock(8, 8)
+            # self.convs[("Hier_SEblock", s)] = SEBlock(8, 8)
             self.convs[("dispconv", s)] = Conv3x3((4-s)*8, self.num_output_channels)
             
         self.decoder = nn.ModuleList(list(self.convs.values()))
@@ -72,11 +72,11 @@ class Dnet_DepthDecoder(nn.Module):
             # x = self.convs["SEblock", i](x)
             x = self.convs[("upconv", i, 1)](x)
             if i in self.scales:
-                x_f = self.convs[("dconv", i)](x)
-                x_att = self.convs[("eca", i)](x_f)
-                self.dfeats.append(x_att + x_f)
+                # x_f = self.convs[("dconv", i)](x)
+                # x_att = self.convs[("eca", i)](x_f)
+                # self.dfeats.append(x_att + x_f)
                 # Original
-                # self.dfeats.append(self.convs[("dconv", i)](x))
+                self.dfeats.append(self.convs[("dconv", i)](x))
         
         self.dfeats.reverse()
 
@@ -94,12 +94,11 @@ class Dnet_DepthDecoder(nn.Module):
                     up /= 2
             dcfeats = torch.cat((dcfeats), 1)
             # dcfeats = SEBlock(dcfeats)
-            dcfeats_f = self.convs[("dispconv", s)](dcfeats)
-            dcfeats_att = self.convs[("eca", i)](dcfeats_f)
-            self.outputs[("disp", s)] = self.sigmoid(dcfeats_f + dcfeats_att)
+            # dcfeats_f = self.convs[("dispconv", s)](dcfeats)
+            # dcfeats_att = self.convs[("eca", i)](dcfeats_f)
+            # self.outputs[("disp", s)] = self.sigmoid(dcfeats_f + dcfeats_att)
             # Original
-            # self.outputs[("disp", s)] = self.sigmoid(self.convs[("dispconv", s)](dcfeats))
-
+            self.outputs[("disp", s)] = self.sigmoid(self.convs[("dispconv", s)](dcfeats))
         return self.outputs
 
 

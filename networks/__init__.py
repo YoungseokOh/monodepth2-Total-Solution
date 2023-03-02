@@ -9,3 +9,4 @@ from .auto_blur import AutoBlurModule
 from .repVGG_encoder import RepVGGencoder
 from .dnet_decoder import Dnet_DepthDecoder
 from .resnet_cbam_encoder import ResnetCbamEncoder
+from .ECA_dnet_decoder import ECADnet_DepthDecoder

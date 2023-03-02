@@ -88,7 +88,7 @@ class ResnetEncoder(nn.Module):
             # num_layers = 18
             self.encoder = resnets[num_layers](pretrained)
 
-        if num_layers > 34:
+        if num_layers > 34: 
             self.num_ch_enc[1:] *= 4
 
     def forward(self, input_image):

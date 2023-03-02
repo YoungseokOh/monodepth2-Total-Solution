@@ -14,9 +14,9 @@ from collections import OrderedDict
 from layers import *
 
 
-class Dnet_DepthDecoder(nn.Module):
+class ECADnet_DepthDecoder(nn.Module):
     def __init__(self, num_ch_enc, scales=range(4), num_output_channels=1, use_skips=True):
-        super(Dnet_DepthDecoder, self).__init__()
+        super(ECADnet_DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels
         self.use_skips = use_skips

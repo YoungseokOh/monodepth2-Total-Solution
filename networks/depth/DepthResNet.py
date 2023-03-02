@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from functools import partial
 from layers import disp_to_depth
-
 from networks.resnet_encoder import ResnetEncoder
 from networks.depth_decoder import DepthDecoder
 
