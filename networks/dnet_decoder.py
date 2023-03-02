@@ -40,6 +40,7 @@ class Dnet_DepthDecoder(nn.Module):
                 num_ch_in += self.num_ch_enc[i - 1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 1)] = ConvBlock(num_ch_in, num_ch_out)
+
             # CBAM
             # self.convs[("ca", i)] = ChannelAttention(num_ch_in)
             # self.convs[("sa", i)] = SpatialAttention()
@@ -68,6 +69,7 @@ class Dnet_DepthDecoder(nn.Module):
             if self.use_skips and i > 0:
                 x += [input_features[i - 1]]
             x = torch.cat(x, 1)
+
             # SE Block
             # x = self.convs["SEblock", i](x)
             x = self.convs[("upconv", i, 1)](x)
@@ -93,6 +95,8 @@ class Dnet_DepthDecoder(nn.Module):
                     # dcfeats.append(upsample_DNet(self.convs["Hier_SEblock", i](self.dfeats[i]), sf=up))
                     up /= 2
             dcfeats = torch.cat((dcfeats), 1)
+            
+            # SE Block
             # dcfeats = SEBlock(dcfeats)
             # dcfeats_f = self.convs[("dispconv", s)](dcfeats)
             # dcfeats_att = self.convs[("eca", i)](dcfeats_f)
