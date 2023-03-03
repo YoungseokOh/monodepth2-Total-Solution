@@ -99,6 +99,13 @@ class Trainer:
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.decoder == 'ECA_Dnet':
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+                print('----- ECA_Dnet_Decoder is loaded -----')
+                self.models["depth"] = networks.ECA_dnet_decoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+                self.models["depth"].to(self.device)
+                self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'original':
             if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
                 print('----- Original_Decoder is loaded -----')
@@ -113,7 +120,6 @@ class Trainer:
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
-        
         if self.opt.depth_network == "HRLiteNet":
             print('----- HRDepth_decoder is loaded -----')
             self.models["depth"] = networks.HRDepthDecoder(
