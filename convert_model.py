@@ -11,12 +11,14 @@ from networks.depth.DepthRepVGGNet import DepthRepVGGNet
 
 
 def main():
-    # model = DepthResDNet("18np")
     main_folder = '/home/seok436/tmp'
     model_name = 'repVGG_model_pretrained_b12_e30_separate_resnet'
     epoch = 30
     load_path = os.path.join(os.path.join(main_folder, model_name), 'models/weights_{}'.format(epoch-1))
     print(load_path)
+    # ResNet-18
+    # model = DepthResDNet("18np")
+    # RepVGGNet
     model = DepthRepVGGNet("18np", True)
     encoder = torch.load(os.path.join(load_path, 'encoder.pth'))
     deploy_encoder = OrderedDict()
