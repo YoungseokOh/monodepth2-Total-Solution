@@ -28,7 +28,7 @@ class DepthRepVGGNet(nn.Module):
         Extra parameters
     """
 
-    def __init__(self, version=None, **kwargs):
+    def __init__(self, version=None, deploy=False,  **kwargs):
         super().__init__()
         assert version is not None, "DispResNet needs a version"
 
@@ -43,7 +43,7 @@ class DepthRepVGGNet(nn.Module):
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
         self.num_ch_enc = np.array([48, 48, 96, 192, 1280])
-        self.encoder = RepVGGencoder(pretrained=pretrained)
+        self.encoder = RepVGGencoder(pretrained=pretrained, deploy=deploy)
         self.decoder = DepthDecoder(num_ch_enc=self.num_ch_enc)
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=80.0)
 

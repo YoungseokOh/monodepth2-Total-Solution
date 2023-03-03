@@ -24,9 +24,9 @@ class MonodepthOptions:
                                  choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
         self.parser.add_argument("--decoder",
                                  type=str,
-                                 help="choose the depth decoder : [Original, Dnet, HR_decoder]",
+                                 help="choose the depth decoder : [Original, ECA_Dnet, Dnet, HR_decoder]",
                                  default="original",
-                                 choices=["original", "Dnet", "HR_decoder"])
+                                 choices=["original", "ECA_Dnet", "Dnet", "HR_decoder"])
         
         # PATHS
         self.parser.add_argument("--data_path",

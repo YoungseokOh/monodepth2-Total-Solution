@@ -64,17 +64,19 @@ def repVGG_multiimage_input(pretrained=False, num_input_images=1):
 class RepVGGencoder(nn.Module):
     """Pytorch module for a resnet encoder
     """
-    def __init__(self, pretrained, num_input_images=1):
+    def __init__(self, pretrained, deploy=False, num_input_images=1):
         super(RepVGGencoder, self).__init__()
         self.num_ch_enc = np.array([48, 48, 96, 192, 1280])       
         if num_input_images > 1:
             self.encoder = repVGG_multiimage_input(pretrained, num_input_images)
         else:
-            self.encoder = RepVGG.create_RepVGG_A0(deploy=False)
+            self.encoder = RepVGG.create_RepVGG_A0(deploy=deploy)
             if pretrained:
                 print('----- RepVGG pretrained model is loaded.-----')
-                self.encoder.load_state_dict(
-                    torch.load('pretrained_model/repVGG/RepVGG-A0-train.pth'))
+                if not deploy:
+                    self.encoder.load_state_dict(
+                        torch.load('pretrained_model/repVGG/RepVGG-A0-train.pth'))
+
 
     def forward(self, input_image):
         self.features = []
