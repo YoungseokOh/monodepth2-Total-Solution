@@ -24,7 +24,7 @@ class MonodepthOptions:
                                  choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
         self.parser.add_argument("--decoder",
                                  type=str,
-                                 help="choose the depth decoder : [Original, ECA_Dnet, Dnet, HR_decoder]",
+                                 help="choose the depth decoder : [Light_Depth, Depth, ECA_Dnet, Dnet, HR_decoder]",
                                  default="original",
                                  choices=["original", "ECA_Dnet", "Dnet", "HR_decoder"])
         
@@ -77,7 +77,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="which training split to use",
                                  choices=["eigen_zhou", "eigen_full", "odom", "benchmark",
-                                          "cityscapes_preprocessed"],
+                                          "cityscapes_preprocessed", "A5_frontview"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,
@@ -89,7 +89,7 @@ class MonodepthOptions:
                                  help="dataset to train on",
                                  default="kitti",
                                  choices=["kitti", "kitti_odom", "kitti_depth", "kitti_test",
-                                          "cityscapes_preprocessed"])
+                                          "cityscapes_preprocessed", "nextchip"])
         self.parser.add_argument("--png",
                                  help="if set, trains from raw KITTI png files (instead of jpgs)",
                                  action="store_true")

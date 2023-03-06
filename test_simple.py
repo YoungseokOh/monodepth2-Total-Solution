@@ -36,27 +36,14 @@ def parse_args():
     parser.add_argument('--num_epoch', type=int,
                         help='name of trained model to inference',
                         default=19)
-    # parser.add_argument('--model_name', type=str,
-    #                     help='name of a pretrained model to use',
-    #                     choices=[
-    #                         "mono_640x192",
-    #                         "stereo_640x192",
-    #                         "mono+stereo_640x192",
-    #                         "mono_no_pt_640x192",
-    #                         "stereo_no_pt_640x192",
-    #                         "mono+stereo_no_pt_640x192",
-    #                         "mono_1024x320",
-    #                         "stereo_1024x320",
-    #                         "mono+stereo_1024x320"])
-    # Deep Network
-    parser.add_argument("--depth_network",
+    parser.add_argument("--encoder",
                                  type=str,
-                                 help="choose the deep network",
+                                 help="choose the encoder network",
                                  default="DepthResNet",
                                  choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
     parser.add_argument("--decoder",
                                  type=str,
-                                 help="choose the depth decoder : [Original, Dnet, HR_decoder]",
+                                 help="choose the depth decoder : [Light_Depth, Depth, ECA_Dnet, Dnet, HR_decoder]",
                                  default="original",
                                  choices=["original", "Dnet", "HR_decoder"])
     parser.add_argument('--ext', type=str,
@@ -77,7 +64,6 @@ def test_simple(args):
     """
     assert args.model_path is not None, \
         "You must specify the --model_name parameter; see README.md for an example"
-
     if torch.cuda.is_available() and not args.no_cuda:
         device = torch.device("cuda")
     else:
@@ -88,83 +74,85 @@ def test_simple(args):
               "models. For mono-trained models, output depths will not in metric space.")
     # Download model for monodepth2
     # download_model_if_doesnt_exist(args.model_name)
-    model_path = os.path.join(args.model_path, "models/weights_{}".format(args.num_epoch - 1))
-    print("-> Loading model from ", model_path)
-    encoder_path = os.path.join(model_path, "encoder.pth")
-    depth_decoder_path = os.path.join(model_path, "depth.pth")
 
-    # LOADING PRETRAINED MODEL
-    print("Loading pretrained encoder")
-    if args.depth_network == "DepthResNet":
-            print(f'----- DepthResNet-----')
-            # Network - DepthResNet(Monodepth2)
+    if args.onepass_model:
+        os.path.join(args.model_path + '_deploy.ckpt')
+    else:
+        model_path = os.path.join(args.model_path, "models/weights_{}".format(args.num_epoch - 1))
+        print("-> Loading model from ", model_path)
+        encoder_path = os.path.join(model_path, "encoder.pth")
+        depth_decoder_path = os.path.join(model_path, "depth.pth")
+
+        # LOADING PRETRAINED MODEL
+        print("Loading pretrained encoder")
+        if args.encoder == "DepthResNet":
+                print(f'----- DepthResNet-----')
+                # Network - DepthResNet(Monodepth2)
+                # Encoder
+                encoder = networks.ResnetEncoder(18, False)
+        elif args.encoder == "DepthResNet_CBAM":
+            print(f'----- DepthResNet_CBAM -----')
+            # Network - DepthResNet-CBAM
             # Encoder
-            encoder = networks.ResnetEncoder(18, False)
-    elif args.depth_network == "DepthResNet_CBAM":
-        print(f'----- DepthResNet_CBAM -----')
-        # Network - DepthResNet-CBAM
-        # Encoder
-        encoder = networks.ResnetCbamEncoder(18, False)
-    elif args.depth_network == "HRLiteNet":
-        print('----- HRLiteNet(MobileNetv3) -----')
-        # Network - HRLiteNet
-        # Encoder
-        encoder = networks.MobileEncoder(False)
-    elif args.depth_network == "DepthRexNet":
-        print('----- DepthRexNet -----')
-        # Network - DepthRexNet
-        # Encoder
-        encoder = networks.RexnetEncoder(18, False)
-    elif args.depth_network == "RepVGGNet":
-        print('----- RepVGGNet -----')
-        # Network - RepVGGNet
-        # Encoder
-        encoder = networks.RepVGGencoder(False)
+            encoder = networks.ResnetCbamEncoder(18, False)
+        elif args.encoder == "HRLiteNet":
+            print('----- HRLiteNet(MobileNetv3) -----')
+            # Network - HRLiteNet
+            # Encoder
+            encoder = networks.MobileEncoder(False)
+        elif args.encoder == "DepthRexNet":
+            print('----- DepthRexNet -----')
+            # Network - DepthRexNet
+            # Encoder
+            encoder = networks.RexnetEncoder(18, False)
+        elif args.encoder == "RepVGGNet":
+            print('----- RepVGGNet -----')
+            # Network - RepVGGNet
+            # Encoder
+            encoder = networks.RepVGGencoder(False)
 
-    # encoder = networks.ResnetEncoder(18, False)
+        # encoder = networks.ResnetEncoder(18, False)
 
-    loaded_dict_enc = torch.load(encoder_path, map_location=device)
+        loaded_dict_enc = torch.load(encoder_path, map_location=device)
 
-    # extract the height and width of image that this model was trained with
-    feed_height = loaded_dict_enc['height']
-    feed_width = loaded_dict_enc['width']
-    filtered_dict_enc = {k: v for k, v in loaded_dict_enc.items() if k in encoder.state_dict()}
-    encoder.load_state_dict(filtered_dict_enc)
-    encoder.to(device)
-    encoder.eval()
+        # extract the height and width of image that this model was trained with
+        feed_height = loaded_dict_enc['height']
+        feed_width = loaded_dict_enc['width']
+        filtered_dict_enc = {k: v for k, v in loaded_dict_enc.items() if k in encoder.state_dict()}
+        encoder.load_state_dict(filtered_dict_enc)
+        encoder.to(device)
+        encoder.eval()
 
-    # Decoder selection block
-    print("   Loading pretrained decoder")
-    if args.decoder == 'Dnet':
-        if args.depth_network == "DepthResNet" or args.depth_network == "DepthResNet_CBAM" or args.depth_network == "RepVGGNet" or args.depth_network == "DepthRexNet":
+        # Decoder selection block
+        print("   Loading pretrained decoder")
+        if args.decoder == 'Dnet':
             print('----- Dnet_Decoder is loaded -----')
             depth_decoder = networks.Dnet_DepthDecoder(
             num_ch_enc=encoder.num_ch_enc, scales=range(4))
-    elif args.decoder == 'original':
-        if args.depth_network == "DepthResNet" or args.depth_network == "DepthResNet_CBAM" or args.depth_network == "RepVGGNet" or args.depth_network == "DepthRexNet":
-            print('----- Original_Decoder is loaded -----')
+        elif args.decoder == 'Depth':
+            print('----- Original_Depth_Decoder is loaded -----')
             depth_decoder = networks.DepthDecoder(
             num_ch_enc=encoder.num_ch_enc, scales=range(4))
-    elif args.decoder == 'HR_decoder':
-        if args.depth_network == "DepthResNet" or args.depth_network == "DepthResNet_CBAM" or args.depth_network == "RepVGGNet" or args.depth_network == "DepthRexNet":
+        elif args.decoder == 'HR_decoder':
             print('----- HR_Depth_Decoder is loaded -----')
             depth_decoder = networks.HRDepthDecoder(
             num_ch_enc=encoder.num_ch_enc, scales=range(4))
-    # if self.opt.depth_network == "HRLiteNet":
-    #     print('----- HRDepth_decoder is loaded -----')
-    #     self.models["depth"] = networks.HRDepthDecoder(
-    #     self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
-    #     self.models["depth"].to(self.device)
-    #     self.parameters_to_train += list(self.models["depth"].parameters())
 
-    # depth_decoder = networks.DepthDecoder(
-    #     num_ch_enc=encoder.num_ch_enc, scales=range(4))
+        # if self.opt.depth_network == "HRLiteNet":
+        #     print('----- HRDepth_decoder is loaded -----')
+        #     self.models["depth"] = networks.HRDepthDecoder(
+        #     self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
+        #     self.models["depth"].to(self.device)
+        #     self.parameters_to_train += list(self.models["depth"].parameters())
 
-    loaded_dict = torch.load(depth_decoder_path, map_location=device)
-    depth_decoder.load_state_dict(loaded_dict)
+        # depth_decoder = networks.DepthDecoder(
+        #     num_ch_enc=encoder.num_ch_enc, scales=range(4))
 
-    depth_decoder.to(device)
-    depth_decoder.eval()
+        loaded_dict = torch.load(depth_decoder_path, map_location=device)
+        depth_decoder.load_state_dict(loaded_dict)
+
+        depth_decoder.to(device)
+        depth_decoder.eval()
 
 
     if not os.path.exists(os.path.join(args.image_path, 'results')):

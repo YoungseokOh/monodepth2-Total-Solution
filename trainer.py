@@ -106,9 +106,9 @@ class Trainer:
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
-        elif self.opt.decoder == 'original':
+        elif self.opt.decoder == 'Depth':
             if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
-                print('----- Original_Decoder is loaded -----')
+                print('----- Original_Depth_Decoder is loaded -----')
                 self.models["depth"] = networks.DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
@@ -211,7 +211,8 @@ class Trainer:
 
         # data
         datasets_dict = {"kitti": datasets.KITTIRAWDataset,
-                         "kitti_odom": datasets.KITTIOdomDataset}
+                         "kitti_odom": datasets.KITTIOdomDataset,
+                         "nextchip":datasets.MonoDataset}
         self.dataset = datasets_dict[self.opt.dataset]
 
         fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
