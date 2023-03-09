@@ -4,7 +4,6 @@ from os import listdir
 from options import MonodepthOptions
 
 file_dir = os.path.dirname(__file__)  # the directory that A5_dataset_splits.py resides in
-# git test
 
 def A5_dataset_split(opt):
     train_val_folder = ['A5T_0001', 'A5T_0002', 'A5T_0003']
