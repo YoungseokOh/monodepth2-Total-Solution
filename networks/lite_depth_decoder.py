@@ -14,9 +14,9 @@ from collections import OrderedDict
 from layers import *
 
 
-class light_DepthDecoder(nn.Module):
+class lite_DepthDecoder(nn.Module):
     def __init__(self, num_ch_enc, scales=range(4), num_output_channels=1, use_skips=True):
-        super(light_DepthDecoder, self).__init__()
+        super(lite_DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels
         self.use_skips = use_skips

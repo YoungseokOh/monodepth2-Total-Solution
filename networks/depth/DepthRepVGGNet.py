@@ -44,7 +44,7 @@ class DepthRepVGGNet(nn.Module):
 
         self.num_ch_enc = np.array([48, 48, 96, 192, 1280])
         self.encoder = RepVGGencoder(pretrained=pretrained, deploy=deploy)
-        self.decoder = Dnet_DepthDecoder(num_ch_enc=self.num_ch_enc)
+        self.decoder = DepthDecoder(num_ch_enc=self.num_ch_enc)
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=80.0)
 
     def forward(self, x):

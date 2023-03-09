@@ -106,10 +106,17 @@ class Trainer:
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
-        elif self.opt.decoder == 'Depth':
+        elif self.opt.decoder == 'original':
             if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
                 print('----- Original_Depth_Decoder is loaded -----')
-                self.models["depth"] = networks.DepthDecoder(
+                self.models["depth"] = networks.lite_DepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+                self.models["depth"].to(self.device)
+                self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.decoder == 'Lite_Decoder':
+            if self.opt.depth_network == "DepthResNet" or self.opt.depth_network == "DepthResNet_CBAM" or self.opt.depth_network == "RepVGGNet" or self.opt.depth_network == "DepthRexNet":
+                print('----- Original_Depth_Decoder is loaded -----')
+                self.models["depth"] = networks.lite_DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())

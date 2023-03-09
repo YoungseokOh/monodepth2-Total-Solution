@@ -8,3 +8,4 @@ models
 .vscode
 .idea
 *.ipynb
+.so

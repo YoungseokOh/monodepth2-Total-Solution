@@ -24,9 +24,9 @@ class MonodepthOptions:
                                  choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
         self.parser.add_argument("--decoder",
                                  type=str,
-                                 help="choose the depth decoder : [Light_Depth, Depth, ECA_Dnet, Dnet, HR_decoder]",
+                                 help="choose the depth decoder : [Lite_Decoder, original, ECA_Dnet, Dnet, HR_decoder]",
                                  default="original",
-                                 choices=["original", "ECA_Dnet", "Dnet", "HR_decoder"])
+                                 choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", "HR_decoder"])
         
         # PATHS
         self.parser.add_argument("--data_path",
@@ -244,6 +244,9 @@ class MonodepthOptions:
         self.parser.add_argument("--no_eval",
                                  help="if set disables evaluation",
                                  action="store_true")
+        self.parser.add_argument("--onepass",
+                                 help="if set onepass model for evaluation",
+                                 action="store_true")
         self.parser.add_argument("--eval_eigen_to_benchmark",
                                  help="if set assume we are loading eigen results from npy but "
                                       "we want to evaluate using the new benchmark.",
@@ -255,6 +258,16 @@ class MonodepthOptions:
                                  help="if set will perform the flipping post processing "
                                       "from the original monodepth paper",
                                  action="store_true")
+
+        # A5 Dataset Split Options
+     #    self.parser.add_argument("--image_dataset_path",
+     #                             type=str,
+     #                             help="path to the custom training data for mono_dataset.py",
+     #                             default=os.path.join(file_dir, "kitti_data"))
+     #    self.parser.add_argument("--split_db_name",
+     #                             type=str,
+     #                             help="write dataset name in image dataset path",
+     #                             default=os.path.join(file_dir, "kitti_data"))
 
     def parse(self):
         self.options = self.parser.parse_args()

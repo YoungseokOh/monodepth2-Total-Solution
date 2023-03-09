@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from layers import disp_to_depth
 from utils import readlines
 from options import MonodepthOptions
+from collections import OrderedDict
 import datasets
 import networks
 import tqdm
@@ -101,20 +102,55 @@ def evaluate(opt):
             encoder = networks.RexnetEncoder(opt.num_layers, False)
             depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
         elif opt.depth_network == "RepVGGNet":
-            encoder = networks.RepVGGencoder(False)
-            depth_decoder = networks.Dnet_DepthDecoder(encoder.num_ch_enc)
-            # depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+            if opt.onepass:
+                print('----- onepass RepVGG -----')
+                import networks.repVGG as RepVGG
+                from networks.depth.DepthRepVGGNet import DepthRepVGGNet
+                model = DepthRepVGGNet("18np", True)
+                encoder = torch.load(os.path.join(opt.load_weights_folder, 'encoder.pth'))
+                deploy_encoder = OrderedDict()
+                for k, v in encoder.items():
+                    if k == 'height' or k == 'width' or k == 'use_stereo':
+                        continue
+                    else:
+                        deploy_encoder[k[8:]] = v
+                build_repVGG_encoder = RepVGG.create_RepVGG_A0(False)
+                build_repVGG_encoder.load_state_dict(deploy_encoder)
+                deploy_repVGG_encoder = RepVGG.repvgg_model_convert(build_repVGG_encoder, os.path.join(opt.load_weights_folder, 'encoder_deploy.pth'))
+                decoder = torch.load(os.path.join(opt.load_weights_folder, 'depth.pth'))
+                endecoder = OrderedDict()
+                for k, v in deploy_repVGG_encoder.state_dict().items():
+                    if k == 'height' or k == 'width' or k == 'use_stereo':
+                        continue
+                    endecoder['encoder.encoder.' + k] = v
+                for k, v in decoder.items():
+                    if k in endecoder:
+                        endecoder['decoder.' + k] += v
+                    else:
+                        endecoder['decoder.' + k] = v
+                model.load_state_dict(endecoder)
+            else:
+                encoder = networks.RepVGGencoder(False)
+                # Dnet_DepthDecoder
+                # depth_decoder = networks.Dnet_DepthDecoder(encoder.num_ch_enc)
+                # Lite DepthDecoder
+                # depth_decoder = networks.lite_DepthDecoder(encoder.num_ch_enc)
+                # Original Decoder
+                depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+            
         
-        
-        model_dict = encoder.state_dict()
-        encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
-        depth_decoder.load_state_dict(torch.load(decoder_path))
+        if opt.onepass:
+            model.cuda()
+            model.eval()
+        else:
+            model_dict = encoder.state_dict()
+            encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
+            depth_decoder.load_state_dict(torch.load(decoder_path))
 
-        encoder.cuda()
-        encoder.eval()
-        depth_decoder.cuda()
-        depth_decoder.eval()
-
+            encoder.cuda()
+            encoder.eval()
+            depth_decoder.cuda()
+            depth_decoder.eval()
         pred_disps = []
 
         print("-> Computing predictions with size {}x{}".format(
@@ -128,9 +164,15 @@ def evaluate(opt):
                     # Post-processed results require each image to have two forward passes
                     input_color = torch.cat((input_color, torch.flip(input_color, [3])), 0)
 
-                output = depth_decoder(encoder(input_color))
+                if opt.onepass:
+                    output = model(input_color)
+                else:
+                    output = depth_decoder(encoder(input_color))
 
-                pred_disp, _ = disp_to_depth(output[("disp", 0)], opt.min_depth, opt.max_depth)
+                if opt.onepass:
+                    pred_disp, _ = disp_to_depth(output, opt.min_depth, opt.max_depth)
+                else:
+                    pred_disp, _ = disp_to_depth(output[("disp", 0)], opt.min_depth, opt.max_depth)
                 pred_disp = pred_disp.cpu()[:, 0].numpy()
 
                 if opt.post_process:
