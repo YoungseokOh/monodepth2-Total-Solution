@@ -77,7 +77,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="which training split to use",
                                  choices=["eigen_zhou", "eigen_full", "odom", "benchmark",
-                                          "cityscapes_preprocessed", "A5_frontview"],
+                                          "cityscapes_preprocessed", "A5_v3_frontview"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,

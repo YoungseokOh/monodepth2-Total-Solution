@@ -11,10 +11,17 @@ import random
 import numpy as np
 import copy
 from PIL import Image  # using pillow-simd for increased speed
+import PIL.Image as pil
 
 import torch
 import torch.utils.data as data
 from torchvision import transforms
+
+def get_color(self, folder, frame_index, side, do_flip):
+        color = self.loader(self.get_image_path(folder, frame_index, side))
+        if do_flip:
+            color = color.transpose(pil.FLIP_LEFT_RIGHT)
+        return color
 
 
 def pil_loader(path):
@@ -146,7 +153,7 @@ class MonoDataset(data.Dataset):
         if len(line) == 3:
             frame_index = int(line[1])
         else:
-            frame_index = 0
+            frame_index = line[1]
 
         if len(line) == 3:
             side = line[2]
@@ -158,7 +165,7 @@ class MonoDataset(data.Dataset):
                 other_side = {"r": "l", "l": "r"}[side]
                 inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
             else:
-                inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
+                inputs[("color", i, -1)] = get_color(folder, frame_index + i, side, do_flip)
 
         # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
@@ -198,8 +205,15 @@ class MonoDataset(data.Dataset):
 
         return inputs
 
-    def get_color(self, folder, frame_index, side, do_flip):
-        raise NotImplementedError
+
+    def get_image_path(self, folder, frame_index, side):
+        f_str = "{:010d}{}".format(frame_index, self.img_ext)
+        image_path = os.path.join(
+            self.data_path,
+            folder,
+            "{}".format(f_str))
+        return image_path
+
 
     def check_depth(self):
         raise NotImplementedError
