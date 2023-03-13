@@ -75,14 +75,6 @@ class Trainer:
             self.models["encoder"] = networks.MobileEncoder(self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
-        elif self.opt.depth_network == "DepthRexNet":
-            print('----- DepthRexNet -----')
-            # Network - DepthRexNet
-            # Encoder
-            self.models["encoder"] = networks.RexnetEncoder(
-                self.opt.num_layers, self.opt.weights_init == "pretrained")
-            self.models["encoder"].to(self.device)
-            self.parameters_to_train += list(self.models["encoder"].parameters())
         elif self.opt.depth_network == "RepVGGNet":
             print('----- RepVGGNet -----')
             # Network - RepVGGNet
