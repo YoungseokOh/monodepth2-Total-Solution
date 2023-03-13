@@ -17,12 +17,6 @@ import torch
 import torch.utils.data as data
 from torchvision import transforms
 
-def get_color(self, folder, frame_index, side, do_flip):
-        color = self.loader(self.get_image_path(folder, frame_index, side))
-        if do_flip:
-            color = color.transpose(pil.FLIP_LEFT_RIGHT)
-        return color
-
 
 def pil_loader(path):
     # open path as file to avoid ResourceWarning
