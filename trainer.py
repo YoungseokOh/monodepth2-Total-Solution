@@ -62,7 +62,7 @@ class Trainer:
             self.parameters_to_train += list(self.models["encoder"].parameters())
         if self.opt.depth_network == "LwDepthResNet":    
             print(f'-----Lightweight ResNet-{self.opt.num_layers} -----')
-            # Network - DepthResNet(Monodepth2)
+            # Network - Lightweight Depth ResNet-18
             # Encoder
             self.models["encoder"] = networks.LwResnetEncoder(
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
