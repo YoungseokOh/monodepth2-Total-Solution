@@ -60,6 +60,14 @@ class Trainer:
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
+        if self.opt.depth_network == "LwDepthResNet":    
+            print(f'-----Lightweight ResNet-{self.opt.num_layers} -----')
+            # Network - DepthResNet(Monodepth2)
+            # Encoder
+            self.models["encoder"] = networks.LwResnetEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained")
+            self.models["encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["encoder"].parameters())
         elif self.opt.depth_network == "DepthResNet_CBAM":
             print(f'----- DepthResNet_CBAM-{self.opt.num_layers} -----')
             # Network - DepthResNet-CBAM

@@ -64,7 +64,10 @@ class MonoDataset(data.Dataset):
 
         self.loader = pil_loader
         self.to_tensor = transforms.ToTensor()
-
+        self.K = np.array([[1.0, 0, 0.5, 0],
+                    [0, 1.0, 0.5, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1]], dtype=np.float32)
         # We need to specify augmentations differently in newer versions of torchvision.
         # We first try the newer tuple version; if this fails we fall back to scalars
         try:
@@ -147,7 +150,7 @@ class MonoDataset(data.Dataset):
         if len(line) == 3:
             frame_index = int(line[1])
         else:
-            frame_index = line[1]
+            frame_index = int(line[1])
 
         if len(line) == 3:
             side = line[2]
@@ -159,7 +162,7 @@ class MonoDataset(data.Dataset):
                 other_side = {"r": "l", "l": "r"}[side]
                 inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
             else:
-                inputs[("color", i, -1)] = get_color(folder, frame_index + i, side, do_flip)
+                inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
 
         # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
@@ -184,21 +187,30 @@ class MonoDataset(data.Dataset):
             del inputs[("color", i, -1)]
             del inputs[("color_aug", i, -1)]
 
-        if self.load_depth:
-            depth_gt = self.get_depth(folder, frame_index, side, do_flip)
-            inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
-            inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
+        # when you use depth or stereo camera
+        # if self.load_depth:
+        #     depth_gt = self.get_depth(folder, frame_index, side, do_flip)
+        #     inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
+        #     inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
-        if "s" in self.frame_idxs:
-            stereo_T = np.eye(4, dtype=np.float32)
-            baseline_sign = -1 if do_flip else 1
-            side_sign = -1 if side == "l" else 1
-            stereo_T[0, 3] = side_sign * baseline_sign * 0.1
+        # if "s" in self.frame_idxs:
+        #     stereo_T = np.eye(4, dtype=np.float32)
+        #     baseline_sign = -1 if do_flip else 1
+        #     side_sign = -1 if side == "l" else 1
+        #     stereo_T[0, 3] = side_sign * baseline_sign * 0.1
 
-            inputs["stereo_T"] = torch.from_numpy(stereo_T)
+        #     inputs["stereo_T"] = torch.from_numpy(stereo_T)
 
         return inputs
 
+
+    def get_color(self, folder, frame_index, side, do_flip):
+        color = self.loader(self.get_image_path(folder, frame_index, side))
+
+        if do_flip:
+            color = color.transpose(pil.FLIP_LEFT_RIGHT)
+
+        return color
 
     def get_image_path(self, folder, frame_index, side):
         f_str = "{:010d}{}".format(frame_index, self.img_ext)

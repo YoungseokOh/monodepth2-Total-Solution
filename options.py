@@ -21,7 +21,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="choose the deep network",
                                  default="DepthResNet",
-                                 choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
+                                 choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", "RepVGGNet"])
         self.parser.add_argument("--decoder",
                                  type=str,
                                  help="choose the depth decoder : [Lite_Decoder, original, ECA_Dnet, Dnet, HR_decoder]",
@@ -77,7 +77,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="which training split to use",
                                  choices=["eigen_zhou", "eigen_full", "odom", "benchmark",
-                                          "cityscapes_preprocessed", "A5_v3_frontview"],
+                                          "cityscapes_preprocessed", "A5_v3_frontview", "A5_v4_frontview"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,

@@ -3,7 +3,7 @@ from networks.depth_decoder import DepthDecoder
 from networks.mobilenetv3_encoder import MobileEncoder
 from networks.hr_depth_decoder import HRDepthDecoder
 from networks.pose_decoder import PoseDecoder
-from networks.rexnet_encoder import RexnetEncoder
+from networks.lw_resnet_encoder import RexnetEncoder
 from networks.pose_cnn import PoseCNN
 from networks.auto_blur import AutoBlurModule
 from networks.repVGG_encoder import RepVGGencoder
