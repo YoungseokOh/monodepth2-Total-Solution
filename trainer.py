@@ -106,13 +106,13 @@ class Trainer:
                 self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'original':
                 print('----- Original_Depth_Decoder is loaded -----')
-                self.models["depth"] = networks.lite_DepthDecoder(
+                self.models["depth"] = networks.DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'Lite_Decoder':
                 print('----- Original_Depth_Decoder is loaded -----')
-                self.models["depth"] = networks.lite_DepthDecoder(
+                self.models["depth"] = networks.Lite_DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())

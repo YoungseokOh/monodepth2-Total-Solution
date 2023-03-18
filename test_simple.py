@@ -9,14 +9,14 @@ from __future__ import absolute_import, division, print_function
 import os
 import sys
 import glob
+import torch
 import argparse
 import numpy as np
 import PIL.Image as pil
 import matplotlib as mpl
 import matplotlib.cm as cm
-
-import torch
 from torchvision import transforms, datasets
+from cv2 import imwrite, imread
 
 import networks
 from layers import disp_to_depth
@@ -35,17 +35,17 @@ def parse_args():
                         default="")
     parser.add_argument('--num_epoch', type=int,
                         help='name of trained model to inference',
-                        default=19)
+                        default=20)
     parser.add_argument("--encoder",
                                  type=str,
-                                 help="choose the encoder network",
+                                 help="choose the encoder network : [DepthResNet, DepthResNet_CBAM, HRLiteNet, LwDepthResNet, RepVGGNet]",
                                  default="DepthResNet",
-                                 choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "DepthRexNet", "RepVGGNet"])
+                                 choices=["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", "RepVGGNet"])
     parser.add_argument("--decoder",
                                  type=str,
-                                 help="choose the depth decoder : [Light_Depth, Depth, ECA_Dnet, Dnet, HR_decoder]",
+                                 help="choose the depth decoder : [Lite_Decoder, original, ECA_Dnet, Dnet, HR_decoder]",
                                  default="original",
-                                 choices=["original", "Dnet", "HR_decoder"])
+                                 choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", "HR_decoder"])
     parser.add_argument('--ext', type=str,
                         help='image extension to search for in folder', default="jpg")
     parser.add_argument("--no_cuda",
@@ -55,6 +55,9 @@ def parse_args():
                         help='if set, predicts metric depth instead of disparity. (This only '
                              'makes sense for stereo-trained KITTI models).',
                         action='store_true')
+    parser.add_argument("--onepass_model",
+                        help="if set onepass model for evaluation",
+                        action="store_true")
 
     return parser.parse_args()
 
@@ -86,12 +89,15 @@ def test_simple(args):
         # LOADING PRETRAINED MODEL
         print("Loading pretrained encoder")
         if args.encoder == "DepthResNet":
-                print(f'----- DepthResNet-----')
-                # Network - DepthResNet(Monodepth2)
-                # Encoder
-                encoder = networks.ResnetEncoder(18, False)
+            print('----- DepthResNet-----')
+            # Network - DepthResNet(Monodepth2)
+            # Encoder
+            encoder = networks.ResnetEncoder(18, False)
+        elif args.encoder == "LwDepthResNet":
+            print(" ----- LwDepthResNet -----")
+            encoder = networks.LwResnetEncoder(18, False)
         elif args.encoder == "DepthResNet_CBAM":
-            print(f'----- DepthResNet_CBAM -----')
+            print('----- DepthResNet_CBAM -----')
             # Network - DepthResNet-CBAM
             # Encoder
             encoder = networks.ResnetCbamEncoder(18, False)
@@ -129,24 +135,22 @@ def test_simple(args):
             print('----- Dnet_Decoder is loaded -----')
             depth_decoder = networks.Dnet_DepthDecoder(
             num_ch_enc=encoder.num_ch_enc, scales=range(4))
-        elif args.decoder == 'Depth':
-            print('----- Original_Depth_Decoder is loaded -----')
-            depth_decoder = networks.DepthDecoder(
-            num_ch_enc=encoder.num_ch_enc, scales=range(4))
         elif args.decoder == 'HR_decoder':
             print('----- HR_Depth_Decoder is loaded -----')
             depth_decoder = networks.HRDepthDecoder(
             num_ch_enc=encoder.num_ch_enc, scales=range(4))
-
-        # if self.opt.depth_network == "HRLiteNet":
-        #     print('----- HRDepth_decoder is loaded -----')
-        #     self.models["depth"] = networks.HRDepthDecoder(
-        #     self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
-        #     self.models["depth"].to(self.device)
-        #     self.parameters_to_train += list(self.models["depth"].parameters())
-
-        # depth_decoder = networks.DepthDecoder(
-        #     num_ch_enc=encoder.num_ch_enc, scales=range(4))
+        elif args.decoder == 'original':
+            print('----- Original Decoder is loaded -----')
+            depth_decoder = networks.DepthDecoder(
+                num_ch_enc=encoder.num_ch_enc, scales=range(4))
+        elif args.decoder == 'Lite_Decoder':
+            print('----- Lite_DepthDecoder is loaded -----')
+            depth_decoder = networks.Lite_DepthDecoder(
+                num_ch_enc=encoder.num_ch_enc, scales=range(4))
+        elif args.decoder == 'ECA_Dnet':
+            print('----- ECA_Dnet_Decoder is loaded -----')
+            depth_decoder = networks.Dnet_DepthDecoder(
+            num_ch_enc=encoder.num_ch_enc, scales=range(4))
 
         loaded_dict = torch.load(depth_decoder_path, map_location=device)
         depth_decoder.load_state_dict(loaded_dict)
@@ -183,7 +187,7 @@ def test_simple(args):
             original_width, original_height = input_image.size
             input_image = input_image.resize((feed_width, feed_height), pil.LANCZOS)
             input_image = transforms.ToTensor()(input_image).unsqueeze(0)
-
+            rgb = input_image[0].permute(1, 2, 0).detach().cpu().numpy() * 255
             # PREDICTION
             input_image = input_image.to(device)
             features = encoder(input_image)
@@ -191,7 +195,7 @@ def test_simple(args):
 
             disp = outputs[("disp", 0)]
             disp_resized = torch.nn.functional.interpolate(
-                disp, (original_height, original_width), mode="bilinear", align_corners=False)
+                disp, (feed_height, feed_width), mode="bilinear", align_corners=False)
 
             # Saving numpy file
             output_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -211,14 +215,21 @@ def test_simple(args):
             mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
             colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
             im = pil.fromarray(colormapped_im)
-
+            input_image = np.transpose(input_image, (0, 2, 3, 1))
+            stack_results = np.concatenate([rgb, colormapped_im], 0)
             name_dest_im = os.path.join(output_directory, "{}_disp.jpeg".format(output_name))
-            im.save(name_dest_im)
+            name_dest_stacks = os.path.join(output_directory, "{}_stacks.jpeg".format(output_name))
+            # im.save(name_dest_im)
+            stack_results = pil.fromarray(np.uint8(stack_results)).convert('RGB')
+            stack_results = transforms.Resize((384, 640), pil.ANTIALIAS)(stack_results)
+            stack_results.save(name_dest_stacks)
+            # imwrite(name_dest_stacks, stack_results[:, :, ::-1])
 
             print("   Processed {:d} of {:d} images - saved predictions to:".format(
                 idx + 1, len(paths)))
             print("   - {}".format(name_dest_im))
             print("   - {}".format(name_dest_npy))
+            print("   - {}".format(name_dest_stacks))
 
     print('-> Done!')
 

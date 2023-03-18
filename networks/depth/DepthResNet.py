@@ -8,7 +8,7 @@ from networks.resnet_encoder import ResnetEncoder
 from networks.depth_decoder import DepthDecoder
 
 
-class DepthResDNet(nn.Module):
+class DepthResNet(nn.Module):
     """
     Inverse depth network based on the ResNet architecture.
 
@@ -47,7 +47,6 @@ class DepthResDNet(nn.Module):
         x = self.encoder(x)
         x = self.decoder(x)
         disps = [x[('disp', i)] for i in range(4)]
-        d_disp_0 = disps[0]
 
         if self.training:
             return [self.scale_inv_depth(d)[0] for d in disps]

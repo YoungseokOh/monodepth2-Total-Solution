@@ -77,7 +77,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="which training split to use",
                                  choices=["eigen_zhou", "eigen_full", "odom", "benchmark",
-                                          "cityscapes_preprocessed", "A5_v3_frontview", "A5_v4_frontview"],
+                                          "cityscapes_preprocessed", "A5_v4_frontview", "A5_v4_frontview_denoise"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,
@@ -213,7 +213,7 @@ class MonodepthOptions:
         self.parser.add_argument("--save_frequency",
                                  type=int,
                                  help="number of epochs between each save",
-                                 default=10)
+                                 default=5)
 
         # EVALUATION options
         self.parser.add_argument("--eval_stereo",

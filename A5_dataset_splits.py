@@ -4,9 +4,21 @@ from os import listdir
 from options import MonodepthOptions
 
 file_dir = os.path.dirname(__file__)  # the directory that A5_dataset_splits.py resides in
+train_val_folder = ['A5T_0001', 'A5T_0002', 'A5T_0003']
+
+def copy_origin_to_denoise(opt):
+    A5T_path = os.path.join(opt.data_path, train_val_folder[0])
+    folder_list = os.listdir(os.path.join(opt.data_path, train_val_folder[0]))
+    for i in folder_list:
+        temp_path = os.path.join(A5T_path, i)
+        temp_list = os.listdir(temp_path)
+        if len(temp_list) != 100:
+            print(temp_path)
+    
+    return 0
+
 
 def A5_dataset_split(opt):
-    train_val_folder = ['A5T_0001', 'A5T_0002', 'A5T_0003']
     dataset_version = opt.data_path.split(os.path.sep)[-1]
     concat_train_path = os.path.join(opt.data_path, train_val_folder[0]) # Train
     concat_val_path = os.path.join(opt.data_path, train_val_folder[2]) # Validation
@@ -40,3 +52,4 @@ def A5_dataset_split(opt):
 if __name__ == "__main__":
     options = MonodepthOptions()
     A5_dataset_split(options.parse())
+    # copy_origin_to_denoise(options.parse())

@@ -10,4 +10,4 @@ from .repVGG_encoder import RepVGGencoder
 from .dnet_decoder import Dnet_DepthDecoder
 from .resnet_cbam_encoder import ResnetCbamEncoder
 from .ECA_dnet_decoder import ECADnet_DepthDecoder
-from .lite_depth_decoder import lite_DepthDecoder
+from .lite_depth_decoder import Lite_DepthDecoder
