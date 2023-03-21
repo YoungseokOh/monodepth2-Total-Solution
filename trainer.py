@@ -100,13 +100,19 @@ class Trainer:
                 self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'ECA_Dnet':
                 print('----- ECA_Dnet_Decoder is loaded -----')
-                self.models["depth"] = networks.ECA_dnet_decoder(
+                self.models["depth"] = networks.ECADnet_DepthDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'original':
                 print('----- Original_Depth_Decoder is loaded -----')
                 self.models["depth"] = networks.DepthDecoder(
+                self.models["encoder"].num_ch_enc, self.opt.scales)
+                self.models["depth"].to(self.device)
+                self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.decoder == 'PS_Decoder':
+                print('----- Original_Depth_Decoder is loaded -----')
+                self.models["depth"] = networks.DepthPSDecoder(
                 self.models["encoder"].num_ch_enc, self.opt.scales)
                 self.models["depth"].to(self.device)
                 self.parameters_to_train += list(self.models["depth"].parameters())
@@ -213,6 +219,7 @@ class Trainer:
 
         # data
         datasets_dict = {"kitti": datasets.KITTIRAWDataset,
+                        "cityscapes_preprocessed": datasets.CityscapesPreprocessedDataset,
                          "kitti_odom": datasets.KITTIOdomDataset,
                          "nextchip":datasets.MonoDataset}
         self.dataset = datasets_dict[self.opt.dataset]
