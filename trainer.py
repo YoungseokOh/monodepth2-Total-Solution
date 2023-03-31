@@ -93,49 +93,66 @@ class Trainer:
         
         # Decoder selection block
         if self.opt.decoder == 'Dnet':
-                print('----- Dnet_Decoder is loaded -----')
-                self.models["depth"] = networks.Dnet_DepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-                self.models["depth"].to(self.device)
-                self.parameters_to_train += list(self.models["depth"].parameters())
+            print('----- Dnet_Decoder is loaded -----')
+            self.models["depth"] = networks.Dnet_DepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.decoder == 'CAD_Decoder':
+            print('----- CAD_Decoder is loaded -----')
+            self.models["depth"] = networks.CAD_DepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'ECA_Dnet':
-                print('----- ECA_Dnet_Decoder is loaded -----')
-                self.models["depth"] = networks.ECADnet_DepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-                self.models["depth"].to(self.device)
-                self.parameters_to_train += list(self.models["depth"].parameters())
+            print('----- ECA_Dnet_Decoder is loaded -----')
+            self.models["depth"] = networks.ECADnet_DepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'original':
-                print('----- Original_Depth_Decoder is loaded -----')
-                self.models["depth"] = networks.DepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-                self.models["depth"].to(self.device)
-                self.parameters_to_train += list(self.models["depth"].parameters())
+            print('----- Original_Depth_Decoder is loaded -----')
+            self.models["depth"] = networks.DepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'PS_Decoder':
-                print('----- Original_Depth_Decoder is loaded -----')
-                self.models["depth"] = networks.DepthPSDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-                self.models["depth"].to(self.device)
-                self.parameters_to_train += list(self.models["depth"].parameters())
+            print('----- Depth_PS_Decoder is loaded -----')
+            self.models["depth"] = networks.DepthPSDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'Lite_Decoder':
-                print('----- Original_Depth_Decoder is loaded -----')
-                self.models["depth"] = networks.Lite_DepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-                self.models["depth"].to(self.device)
-                self.parameters_to_train += list(self.models["depth"].parameters())
+            print('----- Original_Depth_Decoder is loaded -----')
+            self.models["depth"] = networks.Lite_DepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'HR_decoder':
-                print('----- HR_Depth_Decoder is loaded -----')
-                self.models["depth"] = networks.HRDepthDecoder(
-                self.models["encoder"].num_ch_enc, self.opt.scales)
-                self.models["depth"].to(self.device)
-                self.parameters_to_train += list(self.models["depth"].parameters())
+            print('----- HR_Depth_Decoder is loaded -----')
+            self.models["depth"] = networks.HRDepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
         if self.opt.depth_network == "HRLiteNet":
             print('----- HRDepth_decoder is loaded -----')
             self.models["depth"] = networks.HRDepthDecoder(
             self.models["encoder"].num_ch_enc, self.opt.scales, mobile_encoder=True)
             self.models["depth"].to(self.device)
             self.parameters_to_train += list(self.models["depth"].parameters())
-
-        # PoseNet
+        if self.opt.depth_network == "RepVGGNet" and self.opt.decoder == "PS_RepVGG_Decoder":
+            print('----- PS_RepVGG_Decoder is loaded -----')
+            self.models["depth"] = networks.DepthPSRepVGGDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
+        if self.opt.depth_network == "RepVGGNet" and self.opt.decoder == "PS_Dnet_RepVGG_Decoder":
+            print('----- PS_Dnet_RepVGG_Decoder is loaded -----')
+            self.models["depth"] = networks.DepthPSDnetRepVGGDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
+# PoseNet
         if self.use_pose_net:
             # Resnet-18
             if self.opt.pose_model_type == "separate_resnet":
@@ -232,7 +249,7 @@ class Trainer:
 
         num_train_samples = len(train_filenames)
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
-
+        # Monodataset -> KITTIRAW or nextchip or Cityscapes
         train_dataset = self.dataset(
             self.opt.data_path, train_filenames, self.opt.height, self.opt.width,
             self.opt.frame_ids, 4, is_train=True, img_ext=img_ext)
@@ -248,6 +265,7 @@ class Trainer:
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         self.val_iter = iter(self.val_loader)
 
+        # Tensorboard
         self.writers = {}
         for mode in ["train", "val"]:
             self.writers[mode] = SummaryWriter(os.path.join(self.log_path, mode))
@@ -354,6 +372,7 @@ class Trainer:
         """
         for key, ipt in inputs.items():
             inputs[key] = ipt.to(self.device)
+        # AutoBlur
         if not self.opt.disable_auto_blur:
             for scale in self.opt.scales:
                 for f_i in self.opt.frame_ids:
@@ -376,15 +395,17 @@ class Trainer:
         else:
             # Otherwise, we only feed the image with frame_id 0 through the depth encoder
             features = self.models["encoder"](inputs["color_aug", 0, 0])
+            # Depth and Pose results in 'outputs'
             outputs = self.models["depth"](features)
-
+        # No need for now
         if self.opt.predictive_mask:
             outputs["predictive_mask"] = self.models["predictive_mask"](features)
 
         if self.use_pose_net:
             outputs.update(self.predict_poses(inputs, features))
-
+        # Warping.
         self.generate_images_pred(inputs, outputs)
+        # Calculate loss
         losses = self.compute_losses(inputs, outputs)
 
         return outputs, losses
@@ -483,7 +504,7 @@ class Trainer:
                 disp = F.interpolate(
                     disp, [self.opt.height, self.opt.width], mode="bilinear", align_corners=False)
                 source_scale = 0
-
+            # Disparity to Depth
             _, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
 
             outputs[("depth", 0, scale)] = depth

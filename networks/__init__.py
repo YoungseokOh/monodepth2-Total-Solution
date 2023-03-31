@@ -12,3 +12,6 @@ from .resnet_cbam_encoder import ResnetCbamEncoder
 from .ECA_dnet_decoder import ECADnet_DepthDecoder
 from .lite_depth_decoder import Lite_DepthDecoder
 from .depth_ps_decoder import DepthPSDecoder
+from .depth_ps_repVGG_decoder import DepthPSRepVGGDecoder
+from .depth_ps_Dnet_repVGG_decoder import DepthPSDnetRepVGGDecoder
+from .depth_CAD_decoder import CAD_DepthDecoder

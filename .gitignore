@@ -9,3 +9,4 @@ models
 .idea
 *.ipynb
 *.so
+.onnx

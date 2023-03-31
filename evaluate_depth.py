@@ -91,7 +91,9 @@ def evaluate(opt):
         if opt.depth_network == "DepthResNet":
             encoder = networks.ResnetEncoder(opt.num_layers, False)
             depth_decoder = networks.Dnet_DepthDecoder(encoder.num_ch_enc)
-            # depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+        elif opt.depth_network == "DepthPSResNet":
+            encoder = networks.ResnetEncoder(opt.num_layers, False)
+            depth_decoder = networks.DepthPSDecoder(encoder.num_ch_enc)
         elif opt.depth_network == "DepthResNet_CBAM":
             encoder = networks.ResnetCbamEncoder(opt.num_layers, False)
             depth_decoder = networks.Dnet_DepthDecoder(encoder.num_ch_enc)

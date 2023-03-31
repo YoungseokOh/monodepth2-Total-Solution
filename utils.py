@@ -8,7 +8,94 @@ from __future__ import absolute_import, division, print_function
 import os
 import hashlib
 import zipfile
+import yacs
+import numpy as np
+import torch
 from six.moves import urllib
+from matplotlib.cm import get_cmap
+
+
+
+def is_numpy(data):
+    """Checks if data is a numpy array."""
+    return isinstance(data, np.ndarray)
+
+
+def is_tensor(data):
+    """Checks if data is a torch tensor."""
+    return type(data) == torch.Tensor
+
+
+def is_tuple(data):
+    """Checks if data is a tuple."""
+    return isinstance(data, tuple)
+
+
+def is_list(data):
+    """Checks if data is a list."""
+    return isinstance(data, list)
+
+
+def is_dict(data):
+    """Checks if data is a dictionary."""
+    return isinstance(data, dict)
+
+
+def is_str(data):
+    """Checks if data is a string."""
+    return isinstance(data, str)
+
+
+def is_int(data):
+    """Checks if data is an integer."""
+    return isinstance(data, int)
+
+
+def is_seq(data):
+    """Checks if data is a list or tuple."""
+    return is_tuple(data) or is_list(data)
+
+
+def is_cfg(data):
+    """Checks if data is a configuration node"""
+    return type(data) == yacs.config.CfgNode
+
+
+def viz_inv_depth(inv_depth, normalizer=None, percentile=95,
+                  colormap='magma', filter_zeros=False):
+    """
+    Converts an inverse depth map to a colormap for visualization.
+
+    Parameters
+    ----------
+    inv_depth : torch.Tensor [B,1,H,W]
+        Inverse depth map to be converted
+    normalizer : float
+        Value for inverse depth map normalization
+    percentile : float
+        Percentile value for automatic normalization
+    colormap : str
+        Colormap to be used
+    filter_zeros : bool
+        If True, do not consider zero values during normalization
+
+    Returns
+    -------
+    colormap : np.array [H,W,3]
+        Colormap generated from the inverse depth map
+    """
+    # If a tensor is provided, convert to numpy
+    if is_tensor(inv_depth):
+        # Squeeze if depth channel exists
+        if len(inv_depth.shape) == 3:
+            inv_depth = inv_depth.squeeze(0)
+        inv_depth = inv_depth.detach().cpu().numpy()
+    cm = get_cmap(colormap)
+    if normalizer is None:
+        normalizer = np.percentile(
+            inv_depth[inv_depth > 0] if filter_zeros else inv_depth, percentile)
+    inv_depth /= (normalizer + 1e-6)
+    return cm(np.clip(inv_depth, 0., 1.0))[:, :, :3]
 
 
 def readlines(filename):

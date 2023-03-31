@@ -33,13 +33,10 @@ class DepthPSDecoder(nn.Module):
             # upconv_0
             num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
+            self.convs[("eca"), i, 0]  = eca_layer(num_ch_in)
             self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out)
-
             # upconv_1
             num_ch_in = self.num_ch_dec[i]
-            # if self.use_skips and i > 0:
-            #     num_ch_in += self.num_ch_enc[i - 1]
-            # num_ch_out = self.num_ch_dec[i]
             self.convs[("s1_conv", i, 1)] = S1_ConvBlock(num_ch_in, self.num_ch_ps_dec[0])
             self.convs[("s2_conv", i, 1)] = S2_ConvBlock(self.num_ch_ps_dec[0], self.num_ch_ps_dec[1])
             self.convs[("upconv", i, 1)] = UpConvBlock(self.num_ch_ps_dec[1], num_ch_out * 4)
@@ -49,7 +46,6 @@ class DepthPSDecoder(nn.Module):
                 self.convs[("iconv", i, 1)] = iConvBlock(self.num_ch_dec[i], num_ch_out)
             else:
                 self.convs[("iconv", i, 1)] = iConvBlock(num_ch_in * 2, num_ch_out)
-            # self.convs[("upconv", i, 1)] = ConvBlock(num_ch_in, num_ch_out)
             self.PixelShuffle = nn.PixelShuffle(2)
             self.ELU = nn.ELU(inplace=True)
         for s in self.scales:
@@ -64,7 +60,10 @@ class DepthPSDecoder(nn.Module):
         # decoder
         x = input_features[-1]
         for i in range(4, -1, -1):
-            x = self.convs[("upconv", i, 0)](x)
+            x_f = self.convs[("eca", i, 0)](x)
+            x = self.convs[("upconv", i, 0)](x_f)
+            # PS Original
+            # x = self.convs[("upconv", i, 0)](x)
             x = self.convs[("s1_conv", i, 1)](x)
             x = self.convs[("s2_conv", i, 1)](x)
             x = [self.PixelShuffle(self.convs[("upconv", i, 1)](x))]

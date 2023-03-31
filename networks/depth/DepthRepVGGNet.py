@@ -11,7 +11,10 @@ from ..ECA_dnet_decoder import ECADnet_DepthDecoder
 from ..dnet_decoder import Dnet_DepthDecoder
 # Original Decoder
 from ..depth_decoder import DepthDecoder
-
+# PS_RepVGG Decoder
+from ..depth_ps_repVGG_decoder import DepthPSRepVGGDecoder
+# PS_Dnet_RepVGG Decoder
+from ..depth_ps_Dnet_repVGG_decoder import DepthPSDnetRepVGGDecoder
 
 class DepthRepVGGNet(nn.Module):
     """
@@ -44,7 +47,10 @@ class DepthRepVGGNet(nn.Module):
 
         self.num_ch_enc = np.array([48, 48, 96, 192, 1280])
         self.encoder = RepVGGencoder(pretrained=pretrained, deploy=deploy)
-        self.decoder = DepthDecoder(num_ch_enc=self.num_ch_enc)
+        # PS_RepVGG
+        # self.decoder = DepthPSRepVGGDecoder(num_ch_enc=self.num_ch_enc)
+        # PS_Dnet_RepVGG
+        self.decoder = DepthPSDnetRepVGGDecoder(num_ch_enc=self.num_ch_enc)
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=80.0)
 
     def forward(self, x):

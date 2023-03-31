@@ -88,8 +88,12 @@ class MonoDataset(data.Dataset):
             s = 2 ** i
             self.resize[i] = transforms.Resize((self.height // s, self.width // s),
                                                interpolation=self.interp)
-
-        # self.load_depth = self.check_depth()
+        # A5 nextchip datasets
+        if 'A5' in self.data_path:
+            self.load_depth = False
+        # KITTI
+        else:
+            self.load_depth = self.check_depth()
 
     def preprocess(self, inputs, color_aug):
         """Resize colour images to the required scales and augment if required
@@ -180,7 +184,7 @@ class MonoDataset(data.Dataset):
             color_aug = transforms.ColorJitter( self.brightness, self.contrast, self.saturation, self.hue)
         else:
             color_aug = (lambda x: x)
-
+        # Do prerpocessing. 
         self.preprocess(inputs, color_aug)
 
         for i in self.frame_idxs:
@@ -188,10 +192,10 @@ class MonoDataset(data.Dataset):
             del inputs[("color_aug", i, -1)]
 
         # when you use depth or stereo camera
-        # if self.load_depth:
-        #     depth_gt = self.get_depth(folder, frame_index, side, do_flip)
-        #     inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
-        #     inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
+        if self.load_depth:
+            depth_gt = self.get_depth(folder, frame_index, side, do_flip)
+            inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
+            inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
         # if "s" in self.frame_idxs:
         #     stereo_T = np.eye(4, dtype=np.float32)

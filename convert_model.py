@@ -16,7 +16,7 @@ from networks.depth.DepthRepVGGNet import DepthRepVGGNet
 def main():
     main_folder = '/home/seok436/tmp'
     depth_network  = 'LwDepthResNet' # Choice = ["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", "RepVGGNet"]
-    model_name = 'LwDepthResNet_A5_v4_denoise_640x384_pretrained_b12_e20_separate_repVGG_AutoBlur_original'
+    model_name = 'LwDepthResNet_A5_v4_640x384_pretrained_b12_e20_separate_repVGG_AutoBlur_Dnet_Decoder'
     convert_onnx = True
     input_height = 384
     input_width = 640
@@ -74,7 +74,7 @@ def main():
                 endecoder['decoder.' + k] = v
         model.load_state_dict(endecoder)
         print('----- Deploy model is created!')
-        # torch.save({'state_dict': model.state_dict()}, os.path.join(main_folder, '{}_deploy.ckpt'.format(model_name)))
+        torch.save({'state_dict': model.state_dict()}, os.path.join(main_folder, '{}_deploy.ckpt'.format(model_name)))
 
         # .ckpt save
 
