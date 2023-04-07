@@ -15,6 +15,9 @@ from ..depth_decoder import DepthDecoder
 from ..depth_ps_repVGG_decoder import DepthPSRepVGGDecoder
 # PS_Dnet_RepVGG Decoder
 from ..depth_ps_Dnet_repVGG_decoder import DepthPSDnetRepVGGDecoder
+# Depth_CAD_Decoder
+from ..depth_CAD_decoder import CAD_DepthDecoder
+
 
 class DepthRepVGGNet(nn.Module):
     """
@@ -50,7 +53,9 @@ class DepthRepVGGNet(nn.Module):
         # PS_RepVGG
         # self.decoder = DepthPSRepVGGDecoder(num_ch_enc=self.num_ch_enc)
         # PS_Dnet_RepVGG
-        self.decoder = DepthPSDnetRepVGGDecoder(num_ch_enc=self.num_ch_enc)
+        # self.decoder = DepthPSDnetRepVGGDecoder(num_ch_enc=self.num_ch_enc)
+        # Depth CAD Decoder
+        self.decoder = CAD_DepthDecoder(num_ch_enc=self.num_ch_enc)
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=80.0)
 
     def forward(self, x):
