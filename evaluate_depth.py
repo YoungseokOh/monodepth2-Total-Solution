@@ -90,8 +90,10 @@ def evaluate(opt):
         print(f"Evauluation model : {opt.depth_network}")
         if opt.depth_network == "DepthResNet":
             encoder = networks.ResnetEncoder(opt.num_layers, False)
+            # Depth original
+            depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
             # CAD Decoder
-            depth_decoder = networks.CAD_DepthDecoder(encoder.num_ch_enc)
+            # depth_decoder = networks.CAD_DepthDecoder(encoder.num_ch_enc)
             # Dnet Decoder
             # depth_decoder = networks.Dnet_DepthDecoder(encoder.num_ch_enc)
         elif opt.depth_network == "DepthPSResNet":

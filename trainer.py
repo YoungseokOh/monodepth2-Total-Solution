@@ -379,6 +379,11 @@ class Trainer:
                     inputs[('raw_color', f_i, scale)] = inputs[('color', f_i, scale)]
                     inputs[('color', f_i, scale)] = self.auto_blur(
                         inputs[('color', f_i, scale)])
+        # Disable AutoBlur
+        else:
+            for scale in self.opt.scales:
+                for f_i in self.opt.frame_ids:
+                    inputs[('raw_color', f_i, scale)] = inputs[('color', f_i, scale)]
 
         if self.opt.pose_model_type == "shared":
             # If we are using a shared encoder for both depth and pose (as advocated
