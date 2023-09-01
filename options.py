@@ -21,12 +21,12 @@ class MonodepthOptions:
                                  type=str,
                                  help="choose the deep network",
                                  default="DepthResNet",
-                                 choices=["DepthResNet", "DepthPSResNet", "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", "RepVGGNet"])
+                                 choices=["DepthResNet", "DepthResNet_latest", "DepthPSResNet", "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", "RepVGGNet"])
         self.parser.add_argument("--decoder",
                                  type=str,
                                  help="choose the depth decoder : [Lite_Decoder, original, ECA_Dnet, Dnet, HR_decoder, PS(Pixel Shuffle)_Decoder, PS_RepVGG_Decoder, PS_Dnet_RepVGG_Decoder]",
-                                 default="original",
-                                 choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", "HR_decoder", "PS_Decoder", "PS_RepVGG_Decoder", "PS_Dnet_RepVGG_Decoder", "CAD_Decoder"])
+                                 default="NCDL_Decoder",
+                                 choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", "HR_decoder", "PS_Decoder", "PS_RepVGG_Decoder", "PS_Dnet_RepVGG_Decoder", "CAD_Decoder", "NCDL_Decoder"])
         
         # PATHS
         self.parser.add_argument("--data_path",

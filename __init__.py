@@ -9,3 +9,5 @@ from networks.auto_blur import AutoBlurModule
 from networks.repVGG_encoder import RepVGGencoder
 from networks.dnet_decoder import Dnet_DepthDecoder
 from networks.resnet_cbam_encoder import ResnetCbamEncoder
+from networks.depth_head import depth_head
+from networks.resnet_encoder_latest import LatestResnetEncoder

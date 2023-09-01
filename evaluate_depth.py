@@ -79,7 +79,8 @@ def evaluate(opt):
         filenames = readlines(os.path.join(splits_dir, opt.eval_split, "test_files.txt"))
         encoder_path = os.path.join(opt.load_weights_folder, "encoder.pth")
         decoder_path = os.path.join(opt.load_weights_folder, "depth.pth")
-
+        if opt.decoder == 'NCDL_Decoder':
+            depthead_path = os.path.join(opt.load_weights_folder, "head.pth")
         encoder_dict = torch.load(encoder_path)
 
         dataset = datasets.KITTIRAWDataset(opt.data_path, filenames,
@@ -91,7 +92,11 @@ def evaluate(opt):
         if opt.depth_network == "DepthResNet":
             encoder = networks.ResnetEncoder(opt.num_layers, False)
             # Depth original
-            depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
+            if opt.decoder == "NCDL_Decoder":
+                depth_decoder = networks.NCDLDepthDecoder(encoder.num_ch_enc)
+                depth_head = networks.depth_head_module()
+            else:
+                depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
             # CAD Decoder
             # depth_decoder = networks.CAD_DepthDecoder(encoder.num_ch_enc)
             # Dnet Decoder
@@ -153,11 +158,15 @@ def evaluate(opt):
             model_dict = encoder.state_dict()
             encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
             depth_decoder.load_state_dict(torch.load(decoder_path))
-
+            if opt.decoder == "NCDL_Decoder":
+                depth_head.load_state_dict(torch.load(depthead_path))
+            
             encoder.cuda()
             encoder.eval()
             depth_decoder.cuda()
             depth_decoder.eval()
+            depth_head.cuda()
+            depth_head.eval()
         pred_disps = []
 
         print("-> Computing predictions with size {}x{}".format(
@@ -174,7 +183,10 @@ def evaluate(opt):
                 if opt.onepass:
                     output = model(input_color)
                 else:
-                    output = depth_decoder(encoder(input_color))
+                    if not opt.decoder =="NCDL_Decoder":
+                        output = depth_decoder(encoder(input_color))
+                    else:
+                        output = depth_head(depth_decoder(encoder(input_color)))
 
                 if opt.onepass:
                     pred_disp, _ = disp_to_depth(output, opt.min_depth, opt.max_depth)

@@ -15,3 +15,6 @@ from .depth_ps_decoder import DepthPSDecoder
 from .depth_ps_repVGG_decoder import DepthPSRepVGGDecoder
 from .depth_ps_Dnet_repVGG_decoder import DepthPSDnetRepVGGDecoder
 from .depth_CAD_decoder import CAD_DepthDecoder
+from .depth_decoder_NCDL import NCDLDepthDecoder
+from .depth_head import depth_head_module
+from .resnet_encoder_latest import LatestResnetEncoder

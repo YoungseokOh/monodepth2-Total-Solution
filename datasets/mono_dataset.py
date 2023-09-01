@@ -86,8 +86,14 @@ class MonoDataset(data.Dataset):
         self.resize = {}
         for i in range(self.num_scales):
             s = 2 ** i
-            self.resize[i] = transforms.Resize((self.height // s, self.width // s),
-                                               interpolation=self.interp)
+            # Using transforms.InterpolationMode
+            self.resize[i] =  transforms.Resize((
+                                                self.height // s, self.width // s), 
+                                                transforms.InterpolationMode.BILINEAR, 
+                                                antialias=True)
+
+            # self.resize[i] = transforms.Resize((self.height // s, self.width // s),
+            #                                    interpolation=self.interp)
         # A5 nextchip datasets
         if 'A5' in self.data_path:
             self.load_depth = False
@@ -181,7 +187,7 @@ class MonoDataset(data.Dataset):
             inputs[("inv_K", scale)] = torch.from_numpy(inv_K)
 
         if do_color_aug:
-            color_aug = transforms.ColorJitter( self.brightness, self.contrast, self.saturation, self.hue)
+            color_aug = transforms.ColorJitter(self.brightness, self.contrast, self.saturation, self.hue)
         else:
             color_aug = (lambda x: x)
         # Do prerpocessing. 

@@ -6,6 +6,7 @@ from functools import partial
 from layers import disp_to_depth
 from networks.resnet_encoder import ResnetEncoder
 from networks.depth_decoder import DepthDecoder
+from networks.depth_head import depth_head
 
 
 class DepthResNet(nn.Module):
@@ -37,7 +38,7 @@ class DepthResNet(nn.Module):
 
         self.encoder = ResnetEncoder(num_layers=num_layers, pretrained=pretrained)
         self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc)
-        self.last_decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc)
+        self.head = depth_head()
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=80.0)
         
     def forward(self, x):
@@ -47,8 +48,9 @@ class DepthResNet(nn.Module):
         """
         x = self.encoder(x)
         x = self.decoder(x)
+        x = self.head(x)
         disps = [x[('disp', i)] for i in range(4)]
-
+        
         if self.training:
             return [self.scale_inv_depth(d)[0] for d in disps]
         else:

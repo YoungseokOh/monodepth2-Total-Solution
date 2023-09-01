@@ -173,6 +173,29 @@ class UpConvBlock(nn.Module):
         return out
 
 
+class ConvModule(nn.Module):
+    def __init__(
+        self,
+        in_planes: int,
+        planes: int,
+        kernel_size: int = 3,
+        stride: int = 1,
+        padding: int = 1,
+        use_bn: bool = True,
+        act_type: str = "ReLU",
+    ):
+        super(ConvModule, self).__init__()
+
+        conv = nn.Conv2d(in_planes, planes, kernel_size, stride, padding, bias=False)
+        bn = nn.BatchNorm2d(planes) if use_bn else nn.Identity()
+        act = getattr(torch.nn, act_type)()
+
+        self.m = nn.Sequential(conv, bn, act)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.m(x)
+
+
 class ConvBlock(nn.Module):
     """Layer to perform a convolution followed by ELU
     """

@@ -60,7 +60,15 @@ class Trainer:
                 self.opt.num_layers, self.opt.weights_init == "pretrained")
             self.models["encoder"].to(self.device)
             self.parameters_to_train += list(self.models["encoder"].parameters())
-        if self.opt.depth_network == "LwDepthResNet":    
+        elif self.opt.depth_network == "DepthResNet_latest":    
+            print(f'-----Latest ResNet-{self.opt.num_layers} -----')
+            # Network - Latest Depth ResNet-18
+            # Encoder
+            self.models["encoder"] = networks.LatestResnetEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained")
+            self.models["encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["encoder"].parameters())
+        elif self.opt.depth_network == "LwDepthResNet":    
             print(f'-----Lightweight ResNet-{self.opt.num_layers} -----')
             # Network - Lightweight Depth ResNet-18
             # Encoder
@@ -97,6 +105,14 @@ class Trainer:
             self.models["depth"] = networks.Dnet_DepthDecoder(
             self.models["encoder"].num_ch_enc, self.opt.scales)
             self.models["depth"].to(self.device)
+            self.parameters_to_train += list(self.models["depth"].parameters())
+        elif self.opt.decoder == 'NCDL_Decoder':
+            self.models["depth"] = networks.NCDLDepthDecoder(
+            self.models["encoder"].num_ch_enc, self.opt.scales)
+            self.models["depth"].to(self.device)
+            # Head module
+            self.models["head"] = networks.depth_head_module()
+            self.models["head"].to(self.device) # GPU
             self.parameters_to_train += list(self.models["depth"].parameters())
         elif self.opt.decoder == 'CAD_Decoder':
             print('----- CAD_Decoder is loaded -----')
@@ -401,7 +417,12 @@ class Trainer:
             # Otherwise, we only feed the image with frame_id 0 through the depth encoder
             features = self.models["encoder"](inputs["color_aug", 0, 0])
             # Depth and Pose results in 'outputs'
-            outputs = self.models["depth"](features)
+            if self.opt.decoder == "NCDL_Decoder":
+                # Divided Decoder - Decoder - Head
+                outputs = self.models["depth"](features)    
+                outputs = self.models["head"](outputs)
+            else:
+                outputs = self.models["depth"](features)
         # No need for now
         if self.opt.predictive_mask:
             outputs["predictive_mask"] = self.models["predictive_mask"](features)
