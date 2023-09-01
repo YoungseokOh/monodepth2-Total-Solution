@@ -81,7 +81,7 @@ def evaluate(opt):
         decoder_path = os.path.join(opt.load_weights_folder, "depth.pth")
         if opt.decoder == 'NCDL_Decoder':
             depthead_path = os.path.join(opt.load_weights_folder, "head.pth")
-        encoder_dict = torch.load(encoder_path)
+        encoder_dict = torch.load(encoder_path, map_location='cuda:0')
 
         dataset = datasets.KITTIRAWDataset(opt.data_path, filenames,
                                            encoder_dict['height'], encoder_dict['width'],
@@ -157,9 +157,9 @@ def evaluate(opt):
         else:
             model_dict = encoder.state_dict()
             encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
-            depth_decoder.load_state_dict(torch.load(decoder_path))
+            depth_decoder.load_state_dict(torch.load(decoder_path, map_location='cuda:0'))
             if opt.decoder == "NCDL_Decoder":
-                depth_head.load_state_dict(torch.load(depthead_path))
+                depth_head.load_state_dict(torch.load(depthead_path, map_location='cuda:0'))
             
             encoder.cuda()
             encoder.eval()

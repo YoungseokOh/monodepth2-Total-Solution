@@ -95,7 +95,11 @@ class LatestResnetEncoder(nn.Module):
 
     def forward(self, input_image):
         self.features = []
+        
         x = (input_image - 0.45) / 0.225
+
+        x = torch.ones(1, 3, 192, 640).to('cuda').float()
+        x = (x - 0.45) / 0.225
         x = self.encoder.conv1(x)
         x = self.encoder.bn1(x)
         self.features.append(self.encoder.relu(x))

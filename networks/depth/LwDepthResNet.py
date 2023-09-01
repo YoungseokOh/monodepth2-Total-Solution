@@ -37,7 +37,7 @@ class LwDepthResNet(nn.Module):
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
         self.encoder = LwResnetEncoder(num_layers=num_layers, pretrained=pretrained)
-        self.decoder = Dnet_DepthDecoder(num_ch_enc=self.encoder.num_ch_enc)
+        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc)
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=80.0)
         
     def forward(self, x):

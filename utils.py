@@ -62,7 +62,7 @@ def is_cfg(data):
 
 
 def viz_inv_depth(inv_depth, normalizer=None, percentile=95,
-                  colormap='magma', filter_zeros=False):
+                  colormap='plasma', filter_zeros=False):
     """
     Converts an inverse depth map to a colormap for visualization.
 

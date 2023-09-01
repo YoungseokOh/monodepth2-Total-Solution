@@ -92,8 +92,8 @@ class LwResnetEncoder(nn.Module):
         x = self.encoder.conv1(x)
         x = self.encoder.bn1(x)
         self.features.append(self.encoder.relu(x))
-        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer1(self.encoder.maxpool(self.features[-1]))))
-        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer2(self.features[-1])))
-        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer3(self.features[-1])))
-        self.features.append(self.encoder.spatial_avgpool(self.encoder.layer4(self.features[-1])))
+        self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
+        self.features.append(self.encoder.layer2(self.features[-1]))
+        self.features.append(self.encoder.layer3(self.features[-1]))
+        self.features.append(self.encoder.layer4(self.features[-1]))
         return self.features

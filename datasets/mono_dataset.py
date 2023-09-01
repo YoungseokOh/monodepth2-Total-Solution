@@ -87,13 +87,13 @@ class MonoDataset(data.Dataset):
         for i in range(self.num_scales):
             s = 2 ** i
             # Using transforms.InterpolationMode
-            self.resize[i] =  transforms.Resize((
-                                                self.height // s, self.width // s), 
-                                                transforms.InterpolationMode.BILINEAR, 
-                                                antialias=True)
+            # self.resize[i] =  transforms.Resize((
+            #                                     self.height // s, self.width // s), 
+            #                                     transforms.InterpolationMode.BILINEAR, 
+            #                                     antialias=True)
 
-            # self.resize[i] = transforms.Resize((self.height // s, self.width // s),
-            #                                    interpolation=self.interp)
+            self.resize[i] = transforms.Resize((self.height // s, self.width // s),
+                                               interpolation=self.interp)
         # A5 nextchip datasets
         if 'A5' in self.data_path:
             self.load_depth = False
@@ -153,14 +153,17 @@ class MonoDataset(data.Dataset):
 
         do_color_aug = self.is_train and random.random() > 0.5
         do_flip = self.is_train and random.random() > 0.5
+        # do_flip = False
 
         line = self.filenames[index].split()
         folder = line[0]
 
         if len(line) == 3:
             frame_index = int(line[1])
-        else:
+        elif 'A5' in folder:
             frame_index = int(line[1])
+        else:
+            frame_index = 0
 
         if len(line) == 3:
             side = line[2]

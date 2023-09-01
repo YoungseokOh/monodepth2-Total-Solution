@@ -16,11 +16,11 @@ from networks.depth.DepthRepVGGNet import DepthRepVGGNet
 def main():
     main_folder = '/home/seok436/tmp'
     depth_network  = 'LwDepthResNet' # Choice = ["DepthResNet", "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", "RepVGGNet"]
-    model_name = 'LwDepthResNet_A5_v4_640x384_pretrained_b12_e20_separate_repVGG_AutoBlur_Dnet_Decoder'
+    model_name = 'LwDepthResNet_A5_v4_carhood_final_test'
     convert_onnx = True
     input_height = 384
     input_width = 640
-    epoch = 20
+    epoch = 1 # EPOCH - 1 IS TRUE VALUE FOR PATH.
     load_path = os.path.join(os.path.join(main_folder, model_name), 'models/weights_{}'.format(epoch-1))
     print(load_path)
     # ResNet-18

@@ -367,7 +367,6 @@ class Trainer:
             self.model_optimizer.step()
 
             duration = time.time() - before_op_time
-
             # log less frequently after the first 2000 steps to save time & disk space
             early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
             late_phase = self.step % 2000 == 0
@@ -589,9 +588,10 @@ class Trainer:
         """
         losses = {}
         total_loss = 0
-
+        total_smooth_loss = 0
         for scale in self.opt.scales:
             loss = 0
+            smooth_log = 0
             reprojection_losses = []
 
             if self.opt.v1_multiscale:
@@ -691,11 +691,15 @@ class Trainer:
             smooth_loss = get_smooth_loss(norm_disp, color)
 
             loss += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+            smooth_log += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+            total_smooth_loss += smooth_log
             total_loss += loss
             losses["loss/{}".format(scale)] = loss
 
         total_loss /= self.num_scales
+        total_smooth_loss /= self.num_scales
         losses["loss"] = total_loss
+        losses["smooth_loss"] = total_smooth_loss
         return losses
     
     @staticmethod

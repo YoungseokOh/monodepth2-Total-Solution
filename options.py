@@ -76,8 +76,10 @@ class MonodepthOptions:
         self.parser.add_argument("--split",
                                  type=str,
                                  help="which training split to use",
-                                 choices=["eigen_zhou", "eigen_full", "odom", "benchmark",
-                                          "cityscapes_preprocessed", "A5_v4_frontview", "A5_v4_frontview_denoise"],
+                                 choices=["eigen_zhou", "eigen_full", "odom", 
+                                        "benchmark", "eigen_test", "cityscapes_preprocessed",
+                                        "A5_v4_frontview", "A5_v4_frontview_denoise", "A5_v4_frontview_carhood",
+                                        "A5_adj_3_rearview", "A5_verify_rearview_default", "A5_verify_rearview_selected"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,
@@ -144,7 +146,7 @@ class MonodepthOptions:
         self.parser.add_argument("--scheduler_step_size",
                                  type=int,
                                  help="step size of the scheduler",
-                                 default=15)
+                                 default=12)
         self.parser.add_argument("--lr_scheduler",
                                  type=str,
                                  help="Choose lr_sheduler",
@@ -213,7 +215,7 @@ class MonodepthOptions:
         self.parser.add_argument("--save_frequency",
                                  type=int,
                                  help="number of epochs between each save",
-                                 default=5)
+                                 default=1)
 
         # EVALUATION options
         self.parser.add_argument("--eval_stereo",

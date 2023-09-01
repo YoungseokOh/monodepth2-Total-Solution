@@ -210,10 +210,13 @@ def test_simple(args):
                 np.save(name_dest_npy, metric_depth)
             else:
                 name_dest_npy = os.path.join(output_directory, "{}_disp.npy".format(output_name))
+                name_disp_bin = os.path.join(output_directory, "{}_bin_disp.bin".format(output_name))
                 name_depth_npy = os.path.join(output_directory, "{}_depth.npy".format(output_name))
                 np.save(name_dest_npy, scaled_disp.cpu().numpy())
                 np.save(name_depth_npy, 50 * depth.cpu().numpy())
-
+                with open(name_disp_bin, "wb") as f:
+                    f.write(bytearray(disp.cpu().numpy()))
+                f.close()
             # Saving colormapped depth image
             disp_resized_np = disp_resized.squeeze().cpu().numpy()
             vmax = np.percentile(disp_resized_np, 95)
@@ -230,18 +233,18 @@ def test_simple(args):
             im.save(name_dest_im)
             # im_viz.save(name_dest_viz)
             # Save stack results
-            # stack_results = pil.fromarray(np.uint8(stack_results)).convert('RGB')
-            # stack_results = transforms.Resize((384, 640), pil.ANTIALIAS)(stack_results)
+            stack_results = pil.fromarray(np.uint8(stack_results)).convert('RGB')
+            stack_results = transforms.Resize((384, 640), pil.ANTIALIAS)(stack_results)
             # stack_results.save(name_dest_stacks)
-            imwrite(name_dest_viz, im_viz)
+            # imwrite(name_dest_viz, im_viz)
 
             print("   Processed {:d} of {:d} images - saved predictions to:".format(
                 idx + 1, len(paths)))
             print("   - {}".format(name_dest_im))
-            print("   - {}".format(name_dest_npy))
-            print("   - {}".format(name_depth_npy))
+            # print("   - {}".format(name_dest_npy))
+            # print("   - {}".format(name_depth_npy))
             # print("   - {}".format(name_dest_stacks))
-            print("   - {}".format(name_dest_viz))
+            # print("   - {}".format(name_dest_viz))
 
     print('-> Done!')
 
