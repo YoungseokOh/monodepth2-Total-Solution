@@ -279,7 +279,7 @@ class Trainer:
         self.val_loader = DataLoader(
             val_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
-        self.val_iter = iter(self.val_loader)
+        self.val_iter = next(iter(self.val_loader))
 
         # Tensorboard
         self.writers = {}
@@ -501,10 +501,12 @@ class Trainer:
         """
         self.set_eval()
         try:
-            inputs = self.val_iter.next()
+            #inputs = self.val_iter.next()
+            inputs = self.val_iter
         except StopIteration:
             self.val_iter = iter(self.val_loader)
-            inputs = self.val_iter.next()
+            # inputs = self.val_iter.next()
+            inputs = self.val_iter
 
         with torch.no_grad():
             outputs, losses = self.process_batch(inputs)
@@ -609,7 +611,7 @@ class Trainer:
                 reprojection_losses.append(self.compute_reprojection_loss(pred, target))
 
             reprojection_losses = torch.cat(reprojection_losses, 1)
-
+            
             if not self.opt.disable_automasking:
                 identity_reprojection_losses = []
                 for frame_id in self.opt.frame_ids[1:]:
@@ -817,7 +819,7 @@ class Trainer:
 
                 writer.add_image(
                     "disp_{}/{}".format(s, j),
-                    normalize_image(outputs[("disp", s)][j]), self.step)
+                    viz_inv_depth(normalize_image(outputs[("disp", s)][j])).transpose(2, 0, 1), self.step)
 
                 if self.opt.predictive_mask:
                     for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):
