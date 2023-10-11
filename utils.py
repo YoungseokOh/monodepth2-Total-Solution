@@ -13,7 +13,8 @@ import numpy as np
 import torch
 from six.moves import urllib
 from matplotlib.cm import get_cmap
-
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
 
 
 def is_numpy(data):
@@ -97,6 +98,29 @@ def viz_inv_depth(inv_depth, normalizer=None, percentile=95,
     inv_depth /= (normalizer + 1e-6)
     return cm(np.clip(inv_depth, 0., 1.0))[:, :, :3]
 
+
+def high_res_colormap(low_res_cmap, resolution=1000, max_value=1):
+    # Construct the list colormap, with interpolated values for higher resolution
+    # For a linear segmented colormap, you can just specify the number of point in
+    # cm.get_cmap(name, lutsize) with the parameter lutsize
+    x = np.linspace(0, 1, low_res_cmap.N)
+    low_res = low_res_cmap(x)
+    new_x = np.linspace(0, max_value, resolution)
+    high_res = np.stack([np.interp(new_x, x, low_res[:, i]) for i in range(low_res.shape[1])], axis=1)
+    return ListedColormap(high_res)
+
+
+
+def tensor2array(tensor, colormap='magma'):
+        # Support only preceptually uniform sequential colormaps
+    # https://matplotlib.org/examples/color/colormaps_reference.html
+    COLORMAPS = dict(plasma=cm.get_cmap('plasma', 10000),
+                    magma=high_res_colormap(cm.get_cmap('magma')),
+                    viridis=cm.get_cmap('viridis', 10000))
+
+    norm_array = normalize_image(tensor).detach().cpu()
+    array = COLORMAPS[colormap](norm_array).astype(np.float32)
+    return array.transpose(2, 0, 1)
 
 def readlines(filename):
     """Read all the lines in a text file and return as a list

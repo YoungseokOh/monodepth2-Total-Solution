@@ -79,7 +79,7 @@ class MonodepthOptions:
                                  choices=["eigen_zhou", "eigen_full", "odom", 
                                         "benchmark", "eigen_test", "cityscapes_preprocessed",
                                         "A5_v4_frontview", "A5_v4_frontview_denoise", "A5_v4_frontview_carhood",
-                                        "A5_adj_3_rearview", "A5_verify_rearview_default", "A5_verify_rearview_selected"],
+                                        "A5_adj_3_rearview", "A5_verify_rearview_default", "A5_verify_rearview_selected", "A5_fisheye_cropped_images_for_md2"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,
