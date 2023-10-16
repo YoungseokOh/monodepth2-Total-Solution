@@ -17,6 +17,7 @@ from tensorboardX import SummaryWriter
 import os
 import json
 import random
+from PIL import Image
 
 from utils import *
 from kitti_utils import *
@@ -38,12 +39,13 @@ class Trainer:
         assert self.opt.width % 32 == 0, "'width' must be a multiple of 32"
 
         self.models = {}
+        self.masks = {}
         self.parameters_to_train = []
         self.device = torch.device("cpu" if self.opt.no_cuda else f"cuda:{self.opt.gpu_number}")
         self.num_scales = len(self.opt.scales)
         self.num_input_frames = len(self.opt.frame_ids)
         self.num_pose_frames = 2 if self.opt.pose_model_input == "pairs" else self.num_input_frames
-
+        
         assert self.opt.frame_ids[0] == 0, "frame_ids must start with 0"
 
         self.use_pose_net = not (self.opt.use_stereo and self.opt.frame_ids == [0])
@@ -235,8 +237,14 @@ class Trainer:
                 num_output_channels=(len(self.opt.frame_ids) - 1))
             self.models["predictive_mask"].to(self.device)
             self.parameters_to_train += list(self.models["predictive_mask"].parameters())
-
         
+        # Vignetting mask
+        if self.opt.vignetting_mask:
+            self.vignetting_mask = Image.open('A5_vignetting_mask.jpg')
+            for scale in self.opt.scales:
+                self.masks["vignetting_mask", scale] = np.array(self.vignetting_mask.resize((self.opt.width // (2 ** scale), self.opt.height // (2 ** scale)), 0))
+
+
         self.model_optimizer = optim.Adam(self.parameters_to_train, self.opt.learning_rate)
         if self.opt.lr_scheduler == "StepLR":
             self.model_lr_scheduler = optim.lr_scheduler.StepLR(self.model_optimizer, self.opt.scheduler_step_size, 0.1)
@@ -601,50 +609,105 @@ class Trainer:
             else:
                 source_scale = 0
 
-            disp = outputs[("disp", scale)]
-            color = inputs[("color", 0, scale)] if self.opt.disable_ambiguity_mask \
-                else inputs[('raw_color', 0, scale)]
-            target = inputs[("color", 0, source_scale)]
+            if self.opt.vignetting_mask:
+                mask = torch.from_numpy(self.masks["vignetting_mask", scale]).to(torch.device('cuda'))
+                source_mask = torch.from_numpy(self.masks["vignetting_mask", source_scale]).to(torch.device('cuda'))
+                img_mask = mask.repeat(self.opt.batch_size, 3, 1, 1)
+                source_img_mask = source_mask.repeat(self.opt.batch_size, 3, 1, 1)
+                disp_mask = mask.repeat(self.opt.batch_size, 1, 1, 1)
+                loss_mask = mask.repeat(self.opt.batch_size, 1, 1)
 
-            for frame_id in self.opt.frame_ids[1:]:
-                pred = outputs[("color", frame_id, scale)]
-                reprojection_losses.append(self.compute_reprojection_loss(pred, target))
+                disp = outputs[("disp", scale)]
+                color = inputs[("color", 0, scale)] if self.opt.disable_ambiguity_mask \
+                    else inputs[('raw_color', 0, scale)]
+                target = inputs[("color", 0, source_scale)]
+                target *= source_img_mask
 
-            reprojection_losses = torch.cat(reprojection_losses, 1)
-            
-            if not self.opt.disable_automasking:
-                identity_reprojection_losses = []
                 for frame_id in self.opt.frame_ids[1:]:
-                    pred = inputs[("color", frame_id, source_scale)]
-                    identity_reprojection_losses.append(
-                        self.compute_reprojection_loss(pred, target))
+                    pred = outputs[("color", frame_id, scale)]
+                    pred *= source_img_mask
+                    reprojection_losses.append(self.compute_reprojection_loss(pred, target))
+                
+                reprojection_losses = torch.cat(reprojection_losses, 1)
+                
+                if not self.opt.disable_automasking:
+                    identity_reprojection_losses = []
+                    for frame_id in self.opt.frame_ids[1:]:
+                        pred = inputs[("color", frame_id, source_scale)]
+                        identity_reprojection_losses.append(
+                            self.compute_reprojection_loss(pred, target))
 
-                identity_reprojection_losses = torch.cat(identity_reprojection_losses, 1)
+                    identity_reprojection_losses = torch.cat(identity_reprojection_losses, 1)
+
+                    if self.opt.avg_reprojection:
+                        identity_reprojection_loss = identity_reprojection_losses.mean(1, keepdim=True)
+                    else:
+                        # save both images, and do min all at once below
+                        identity_reprojection_loss = identity_reprojection_losses
+
+                elif self.opt.predictive_mask:
+                    # use the predicted mask
+                    mask = outputs["predictive_mask"]["disp", scale]
+                    if not self.opt.v1_multiscale:
+                        mask = F.interpolate(
+                            mask, [self.opt.height, self.opt.width],
+                            mode="bilinear", align_corners=False)
+
+                    reprojection_losses *= mask
+                    # add a loss pushing mask to 1 (using nn.BCELoss for stability)
+                    weighting_loss = 0.2 * nn.BCELoss()(mask, torch.ones(mask.shape).cuda())
+                    loss += weighting_loss.mean()
 
                 if self.opt.avg_reprojection:
-                    identity_reprojection_loss = identity_reprojection_losses.mean(1, keepdim=True)
+                    reprojection_loss = reprojection_losses.mean(1, keepdim=True)
                 else:
-                    # save both images, and do min all at once below
-                    identity_reprojection_loss = identity_reprojection_losses
+                    reprojection_loss = reprojection_losses
 
-            elif self.opt.predictive_mask:
-                # use the predicted mask
-                mask = outputs["predictive_mask"]["disp", scale]
-                if not self.opt.v1_multiscale:
-                    mask = F.interpolate(
-                        mask, [self.opt.height, self.opt.width],
-                        mode="bilinear", align_corners=False)
-
-                reprojection_losses *= mask
-
-                # add a loss pushing mask to 1 (using nn.BCELoss for stability)
-                weighting_loss = 0.2 * nn.BCELoss()(mask, torch.ones(mask.shape).cuda())
-                loss += weighting_loss.mean()
-
-            if self.opt.avg_reprojection:
-                reprojection_loss = reprojection_losses.mean(1, keepdim=True)
             else:
-                reprojection_loss = reprojection_losses
+                disp = outputs[("disp", scale)]
+                color = inputs[("color", 0, scale)] if self.opt.disable_ambiguity_mask \
+                    else inputs[('raw_color', 0, scale)]
+                target = inputs[("color", 0, source_scale)]
+
+                for frame_id in self.opt.frame_ids[1:]:
+                    pred = outputs[("color", frame_id, scale)]
+                    reprojection_losses.append(self.compute_reprojection_loss(pred, target))
+                
+                reprojection_losses = torch.cat(reprojection_losses, 1)
+                
+                if not self.opt.disable_automasking:
+                    identity_reprojection_losses = []
+                    for frame_id in self.opt.frame_ids[1:]:
+                        pred = inputs[("color", frame_id, source_scale)]
+                        identity_reprojection_losses.append(
+                            self.compute_reprojection_loss(pred, target))
+
+                    identity_reprojection_losses = torch.cat(identity_reprojection_losses, 1)
+
+                    if self.opt.avg_reprojection:
+                        identity_reprojection_loss = identity_reprojection_losses.mean(1, keepdim=True)
+                    else:
+                        # save both images, and do min all at once below
+                        identity_reprojection_loss = identity_reprojection_losses
+
+                elif self.opt.predictive_mask:
+                    # use the predicted mask
+                    mask = outputs["predictive_mask"]["disp", scale]
+                    if not self.opt.v1_multiscale:
+                        mask = F.interpolate(
+                            mask, [self.opt.height, self.opt.width],
+                            mode="bilinear", align_corners=False)
+
+                    reprojection_losses *= mask
+
+                    # add a loss pushing mask to 1 (using nn.BCELoss for stability)
+                    weighting_loss = 0.2 * nn.BCELoss()(mask, torch.ones(mask.shape).cuda())
+                    loss += weighting_loss.mean()
+
+                if self.opt.avg_reprojection:
+                    reprojection_loss = reprojection_losses.mean(1, keepdim=True)
+                else:
+                    reprojection_loss = reprojection_losses
             
             # AutoBlur
             if not self.opt.disable_ambiguity_mask:
@@ -664,9 +727,10 @@ class Trainer:
             else:
                 to_optimise, idxs = torch.min(combined, dim=1)
 
+
             if not self.opt.disable_ambiguity_mask:
                 to_optimise = to_optimise * ambiguity_mask
-
+            
 
             if not self.opt.disable_automasking:
                 # add random numbers to break ties
@@ -682,10 +746,16 @@ class Trainer:
             else:
                 to_optimise, idxs = torch.min(combined, dim=1)
 
+            if self.opt.vignetting_mask:
+                mask = torch.from_numpy(self.masks["vignetting_mask", 0]).to(torch.device('cuda'))
+                mask = mask.repeat(self.opt.batch_size, 1, 1)
+                to_optimise = to_optimise * mask
+
             if not self.opt.disable_automasking:
                 outputs["identity_selection/{}".format(scale)] = (
                     idxs > identity_reprojection_loss.shape[1] - 1).float()
 
+        
             loss += to_optimise.mean()
 
             mean_disp = disp.mean(2, True).mean(3, True)

@@ -21,12 +21,16 @@ class MonodepthOptions:
                                  type=str,
                                  help="choose the deep network",
                                  default="DepthResNet",
-                                 choices=["DepthResNet", "DepthResNet_latest", "DepthPSResNet", "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", "RepVGGNet"])
+                                 choices=["DepthResNet", "DepthResNet_latest", "DepthPSResNet", 
+                                          "DepthResNet_CBAM", "HRLiteNet", "LwDepthResNet", 
+                                          "RepVGGNet"])
         self.parser.add_argument("--decoder",
                                  type=str,
                                  help="choose the depth decoder : [Lite_Decoder, original, ECA_Dnet, Dnet, HR_decoder, PS(Pixel Shuffle)_Decoder, PS_RepVGG_Decoder, PS_Dnet_RepVGG_Decoder]",
                                  default="NCDL_Decoder",
-                                 choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", "HR_decoder", "PS_Decoder", "PS_RepVGG_Decoder", "PS_Dnet_RepVGG_Decoder", "CAD_Decoder", "NCDL_Decoder"])
+                                 choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", 
+                                          "HR_decoder", "PS_Decoder", "PS_RepVGG_Decoder", "PS_Dnet_RepVGG_Decoder", 
+                                          "CAD_Decoder", "NCDL_Decoder"])
         
         # PATHS
         self.parser.add_argument("--data_path",
@@ -79,7 +83,8 @@ class MonodepthOptions:
                                  choices=["eigen_zhou", "eigen_full", "odom", 
                                         "benchmark", "eigen_test", "cityscapes_preprocessed",
                                         "A5_v4_frontview", "A5_v4_frontview_denoise", "A5_v4_frontview_carhood",
-                                        "A5_adj_3_rearview", "A5_verify_rearview_default", "A5_verify_rearview_selected", "A5_fisheye_cropped_images_for_md2"],
+                                        "A5_adj_3_rearview", "A5_verify_rearview_default", "A5_verify_rearview_selected", 
+                                        "A5_fisheye_cropped_images_for_md2", "A5_fisheye_original_images_for_md2"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,
@@ -184,7 +189,11 @@ class MonodepthOptions:
                                  help="normal or shared",
                                  default="separate_resnet",
                                  choices=["posecnn", "separate_resnet", "separate_resnet_cbam", "separate_repVGG", "shared"])
-
+        self.parser.add_argument("--vignetting_mask",
+                                 help="if set, able vignetting mask in the loss. Use only fisheye lens",
+                                 default=False,
+                                 action="store_true")
+        
         # SYSTEM options
         self.parser.add_argument("--no_cuda",
                                  help="if set disables CUDA",
