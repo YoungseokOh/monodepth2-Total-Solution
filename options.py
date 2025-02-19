@@ -27,7 +27,7 @@ class MonodepthOptions:
         self.parser.add_argument("--decoder",
                                  type=str,
                                  help="choose the depth decoder : [Lite_Decoder, original, ECA_Dnet, Dnet, HR_decoder, PS(Pixel Shuffle)_Decoder, PS_RepVGG_Decoder, PS_Dnet_RepVGG_Decoder]",
-                                 default="NCDL_Decoder",
+                                 default="original",
                                  choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", 
                                           "HR_decoder", "PS_Decoder", "PS_RepVGG_Decoder", "PS_Dnet_RepVGG_Decoder", 
                                           "CAD_Decoder", "NCDL_Decoder"])
@@ -84,7 +84,7 @@ class MonodepthOptions:
                                         "benchmark", "eigen_test", "cityscapes_preprocessed",
                                         "A5_v4_frontview", "A5_v4_frontview_denoise", "A5_v4_frontview_carhood",
                                         "A5_adj_3_rearview", "A5_verify_rearview_default", "A5_verify_rearview_selected", 
-                                        "A5_fisheye_cropped_images_for_md2", "A5_fisheye_original_images_for_md2"],
+                                        "A5_fisheye_cropped_images_for_md2", "A5_fisheye_original_images_for_md2", "A6_ch2_md2_dataset"],
                                  default="eigen_zhou")
         self.parser.add_argument("--num_layers",
                                  type=int,

@@ -110,7 +110,6 @@ def high_res_colormap(low_res_cmap, resolution=1000, max_value=1):
     return ListedColormap(high_res)
 
 
-
 def tensor2array(tensor, colormap='magma'):
         # Support only preceptually uniform sequential colormaps
     # https://matplotlib.org/examples/color/colormaps_reference.html
@@ -135,6 +134,7 @@ def normalize_image(x):
     """
     ma = float(x.max().cpu().data)
     mi = float(x.min().cpu().data)
+
     d = ma - mi if ma != mi else 1e5
     return (x - mi) / d
 

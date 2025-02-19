@@ -7,6 +7,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import cv2
 import sys
 import glob
 import torch
@@ -17,7 +18,7 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 from torchvision import transforms, datasets
 from cv2 import imwrite, imread
-from utils import is_tensor
+from utils import is_tensor, normalize_image
 import networks
 from layers import disp_to_depth
 from utils import download_model_if_doesnt_exist, viz_inv_depth
@@ -45,7 +46,10 @@ def parse_args():
                                  type=str,
                                  help="choose the depth decoder : [Lite_Decoder, original, ECA_Dnet, Dnet, HR_decoder]",
                                  default="original",
-                                 choices=["Lite_Decoder", "original", "ECA_Dnet", "Dnet", "HR_decoder", "PS_Decoder", "PS_RepVGG_Decoder", "PS_Dnet_RepVGG_Decoder"])
+                                 choices=["Lite_Decoder", "original", "ECA_Dnet", 
+                                 "Dnet", "HR_decoder", "PS_Decoder", 
+                                 "PS_RepVGG_Decoder", "PS_Dnet_RepVGG_Decoder",
+                                 "NCDL_Decoder"])
     parser.add_argument('--ext', type=str,
                         help='image extension to search for in folder', default="jpg")
     parser.add_argument("--no_cuda",
@@ -155,13 +159,19 @@ def test_simple(args):
             print('----- ECA_Dnet_Decoder is loaded -----')
             depth_decoder = networks.Dnet_DepthDecoder(
             num_ch_enc=encoder.num_ch_enc, scales=range(4))
+        elif args.decoder == 'NCDL_Decoder':
+            print('----- NCDL_Decoder is loaded -----')
+            depth_decoder = networks.NCDLDepthDecoder(
+            num_ch_enc=encoder.num_ch_enc, scales=range(4))
+            depth_head = networks.depth_head_module()
+            depth_head.to(device)
+            depth_head.eval()
 
         loaded_dict = torch.load(depth_decoder_path, map_location=device)
         depth_decoder.load_state_dict(loaded_dict)
 
         depth_decoder.to(device)
         depth_decoder.eval()
-
 
     if not os.path.exists(os.path.join(args.image_path, 'results')):
         os.makedirs(os.path.join(args.image_path, 'results'))
@@ -195,7 +205,10 @@ def test_simple(args):
             # PREDICTION
             input_image = input_image.to(device)
             features = encoder(input_image)
-            outputs = depth_decoder(features)
+            if args.decoder == 'NCDL_Decoder':
+                outputs = depth_head(depth_decoder(features))
+            else:
+                outputs = depth_decoder(features)
 
             disp = outputs[("disp", 0)]
             disp_resized = torch.nn.functional.interpolate(
@@ -225,18 +238,19 @@ def test_simple(args):
             colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
             im = pil.fromarray(colormapped_im)
             im_viz = viz_inv_depth(scaled_disp[0]) * 255
-            input_image = np.transpose(input_image, (0, 2, 3, 1))
-            stack_results = np.concatenate([rgb, colormapped_im], 0)
+            input_image = np.transpose(input_image.cpu(), (0, 2, 3, 1))
+            stack_results = np.concatenate([rgb, im], 0)
+            stack_results = pil.fromarray(np.uint8(stack_results)).convert('RGB')
             name_dest_im = os.path.join(output_directory, "{}_disp.jpeg".format(output_name))
             name_dest_stacks = os.path.join(output_directory, "{}_stacks.jpeg".format(output_name))
             name_dest_viz = os.path.join(output_directory, "{}_viz_disp.jpeg".format(output_name))
-            im.save(name_dest_im)
+            # im.save(name_dest_im)
             # im_viz.save(name_dest_viz)
             # Save stack results
-            stack_results = pil.fromarray(np.uint8(stack_results)).convert('RGB')
-            stack_results = transforms.Resize((384, 640), pil.ANTIALIAS)(stack_results)
-            # stack_results.save(name_dest_stacks)
-            # imwrite(name_dest_viz, im_viz)
+            # stack_results = pil.fromarray(np.uint8(stack_results)).convert('RGB')
+            # stack_results = transforms.Resize((576, 544), pil.ANTIALIAS)(stack_results)
+            stack_results.save(name_dest_viz)
+            # imwrite(name_dest_viz, stack_results)
 
             print("   Processed {:d} of {:d} images - saved predictions to:".format(
                 idx + 1, len(paths)))

@@ -10,3 +10,5 @@ models
 *.ipynb
 *.so
 .onnx
+*.gz
+.hypothesis

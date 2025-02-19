@@ -95,7 +95,7 @@ class MonoDataset(data.Dataset):
             self.resize[i] = transforms.Resize((self.height // s, self.width // s),
                                                interpolation=self.interp)
         # A5 nextchip datasets
-        if 'A5' in self.data_path:
+        if 'A5' in self.data_path or 'A6' in self.data_path:
             self.load_depth = False
         # KITTI
         else:
@@ -161,6 +161,8 @@ class MonoDataset(data.Dataset):
         if len(line) == 3:
             frame_index = int(line[1])
         elif 'A5' in folder:
+            frame_index = int(line[1])
+        elif 'A6' in folder:
             frame_index = int(line[1])
         else:
             frame_index = 0
